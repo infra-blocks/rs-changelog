@@ -4,4 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.38"
 clap = { version = "4.4.18" }
+eyre = "0.6.12"
+markdown = "1.0.0-alpha.17"
+semver = "1.0.23"

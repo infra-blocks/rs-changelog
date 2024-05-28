@@ -1,38 +1,28 @@
-use changelog::{do_stuff, Config};
+use changelog::Linter;
 use clap::{Arg, ArgAction, Command};
 
-fn main() {
-    let command = Command::new("rs-changelog")
+fn main() -> eyre::Result<()> {
+    let command = Command::new("changelog")
         .author("Phil Lavoie")
-        .about("This program doesn't do shit.")
-        .arg(
-            Arg::new("positional")
-                .index(1)
-                .help("A positional argument that ain't doin' shit")
-                .required(true),
-        )
-        .arg(
-            Arg::new("flag")
-                .short('f')
-                .long("flag")
-                .help("A flag (without value) that ain't doin' shit.")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("option")
-                .short('o')
-                .long("option")
-                .help("An option (with a value) that ain't doin' shit.")
-                .action(ArgAction::Set),
-        )
-        .after_help(
-            "This program holds the boilerplate, template code for rust binaries. \
-        It isn't meant to be used on its own.",
+        .about("This program offers different tools to manipulate and parse changelogs.")
+        .subcommand(
+            Command::new("lint").about("Lints a changelog file.").arg(
+                Arg::new("file")
+                    .short('f')
+                    .long("file")
+                    .default_value("CHANGELOG.md")
+                    .action(ArgAction::Set)
+                    .help("The changelog file."),
+            ),
         );
     let matches = command.get_matches();
-    do_stuff(Config {
-        flag: matches.get_flag("flag"),
-        option: matches.get_one::<String>("option").cloned(),
-        positional: matches.get_one::<String>("positional").unwrap().to_string(),
-    })
+
+    match matches.subcommand_matches("lint") {
+        Some(matches) => {
+            let file: &String = matches.get_one("file").unwrap();
+            let linter = Linter::new(file.to_string());
+            linter.lint()
+        }
+        _ => Ok(()),
+    }
 }
