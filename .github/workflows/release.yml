@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-has-semver-label:
+    permissions:
+      pull-requests: write
+    uses: infra-blocks/check-has-semver-label-workflow/.github/workflows/workflow.yml@v2
+  git-tag-from-semver-increment:
+    needs:
+      - check-has-semver-label
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: infra-blocks/git-tag-from-semver-increment-workflow/.github/workflows/workflow.yml@v1
+    with:
+      semver-increment: ${{ needs.check-has-semver-label.outputs.matched-label }}
+      skip: ${{ needs.check-has-semver-label.outputs.matched-label == 'no version' }}
+    secrets:
+      github-token: ${{ secrets.PAT }}
