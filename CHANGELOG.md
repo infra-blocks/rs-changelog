@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First release!
 
-[0.1.0]: https://github.com/infra-blocks/rust-cli-template/releases/tag/v0.1.0
+[0.1.0]: https://github.com/infra-blocks/rs-changelog/releases/tag/v0.1.0

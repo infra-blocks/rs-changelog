@@ -1,8 +1,8 @@
+use changelog::{do_stuff, Config};
 use clap::{Arg, ArgAction, Command};
-use rust_cli_template::{do_stuff, Config};
 
 fn main() {
-    let command = Command::new("rust-cli-template")
+    let command = Command::new("rs-changelog")
         .author("Phil Lavoie")
         .about("This program doesn't do shit.")
         .arg(
