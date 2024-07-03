@@ -1,5 +1,7 @@
-use changelog::Linter;
+mod linter;
+
 use clap::{Arg, ArgAction, Command};
+use linter::Linter;
 
 fn main() -> eyre::Result<()> {
     let command = Command::new("changelog")

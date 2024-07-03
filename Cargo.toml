@@ -4,8 +4,19 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.38"
-clap = { version = "4.4.18" }
+clap = "4.4.18"
+clast = { path = "lib/clast"}
+date = { path = "lib/date" }
 eyre = "0.6.12"
 markdown = "1.0.0-alpha.17"
 semver = "1.0.23"
+
+[dev-dependencies]
+test_utils = { path = "./lib/test_utils" }
+
+[workspace]
+members = [
+  "lib/clast",
+  "lib/date",
+  "lib/test_utils"
+]

@@ -1,4 +1,3 @@
 mod changelog;
-mod linter;
 
-pub use linter::Linter;
+pub use changelog::{Changelog, ChangelogError, ParseOptions, ValidationError};

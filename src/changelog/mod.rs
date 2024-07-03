@@ -1,7 +1,5 @@
 mod changelog;
-pub mod error;
-pub mod markdown;
-pub mod parse;
-mod position;
+mod validate;
 
 pub use changelog::*;
+pub use validate::*;

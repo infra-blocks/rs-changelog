@@ -1,0 +1,12 @@
+[package]
+name = "clast"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+date = { path = "../date" }
+markdown = "1.0.0-alpha.17"
+semver = "1.0.23"
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }

@@ -1,0 +1,90 @@
+use chrono::Datelike;
+use std::fmt::Display;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct NaiveDate(chrono::NaiveDate);
+
+impl NaiveDate {
+    pub fn from_ymd(year: i32, month: u32, day: u32) -> Option<Self> {
+        chrono::NaiveDate::from_ymd_opt(year, month, day).map(|d| Self(d))
+    }
+
+    pub fn from_ymd_str(date: &str) -> Option<Self> {
+        chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+            .ok()
+            .map(|d| Self(d))
+    }
+
+    pub fn year(&self) -> i32 {
+        self.0.year()
+    }
+
+    pub fn month(&self) -> u32 {
+        self.0.month()
+    }
+
+    pub fn day(&self) -> u32 {
+        self.0.day()
+    }
+}
+
+impl Display for NaiveDate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}-{:02}-{:02}",
+            self.0.year(),
+            self.0.month(),
+            self.0.day()
+        )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod from_ymd {
+        use super::*;
+
+        #[test]
+        fn works_for_valid_date() {
+            let date = NaiveDate::from_ymd(2021, 1, 1).unwrap();
+            assert_eq!(date.year(), 2021);
+            assert_eq!(date.month(), 1);
+            assert_eq!(date.day(), 1);
+        }
+
+        #[test]
+        fn fails_for_invalid_date() {
+            assert!(NaiveDate::from_ymd(2021, 13, 1).is_none());
+        }
+    }
+
+    mod from_ymd_str {
+        use super::*;
+
+        #[test]
+        fn works_for_valid_date() {
+            let date = NaiveDate::from_ymd_str("2021-01-01").unwrap();
+            assert_eq!(date.year(), 2021);
+            assert_eq!(date.month(), 1);
+            assert_eq!(date.day(), 1);
+        }
+
+        #[test]
+        fn fails_for_invalid_date() {
+            assert!(NaiveDate::from_ymd_str("2021-13-01").is_none());
+        }
+    }
+
+    mod display {
+        use super::*;
+
+        #[test]
+        fn works() {
+            let date = NaiveDate::from_ymd(2021, 1, 1).unwrap();
+            assert_eq!(date.to_string(), "2021-01-01");
+        }
+    }
+}
