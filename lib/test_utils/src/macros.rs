@@ -60,8 +60,11 @@ macro_rules! fails_for_invalid_heading_depth {
 #[macro_export]
 macro_rules! fails_for_invalid_text {
     ($self:ty, $node:expr) => {
+        fails_for_invalid_text!(fails_for_invalid_text, $self, $node);
+    };
+    ($test_name:ident, $self:ty, $node:expr) => {
         #[test]
-        fn fails_for_invalid_text() {
+        fn $test_name() {
             use crate::node::{Nodes, TryFromNodes};
 
             let node = $node;
@@ -80,8 +83,11 @@ macro_rules! fails_for_invalid_text {
 #[macro_export]
 macro_rules! works_with_valid_node {
     ($self:ty, $node:expr, $asserts:expr) => {
+        works_with_valid_node!(works_with_valid_node, $self, $node, $asserts);
+    };
+    ($test_name:ident, $self:ty, $node:expr, $asserts:expr) => {
         #[test]
-        fn works_with_valid_node() {
+        fn $test_name() {
             use crate::node::{Nodes, TryFromNodes};
 
             let node = $node;

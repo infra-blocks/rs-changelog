@@ -1,0 +1,19 @@
+[package]
+name = "mdast"
+description = """
+A Markdown Abstract Syntax Tree (MDAST) package. This is a thin layer on top of the markdown library.
+Its role is to tweak the capabilities of the dependency. Only the markdown extensions useful in changelogs
+are supported."""
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+markdown = "1.0.0-alpha.20"
+location = { path = "../location" }
+maybe_display = { path = "../maybe_display" }
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }
+
+[lints]
+workspace = true

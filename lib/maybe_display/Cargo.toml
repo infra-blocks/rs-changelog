@@ -1,0 +1,10 @@
+[package]
+name = "maybe_display"
+description = """
+A crate exporting a trait to help displaying optional values.
+"""
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true

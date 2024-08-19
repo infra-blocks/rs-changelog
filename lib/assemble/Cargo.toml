@@ -1,0 +1,15 @@
+[package]
+name = "assemble"
+description = """
+This package assembles lower level components produced by the clast library into a strutured changelog.
+It validates the ordering of nodes and ensures that the changelog is well-formed."""
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+clast = { path = "../clast" }
+location = { path = "../location" }
+stack = { path = "../stack" }
+
+[lints]
+workspace = true
