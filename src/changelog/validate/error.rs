@@ -6,7 +6,7 @@ use std::fmt::Display;
 #[derive(Debug)]
 pub enum ValidationError {
     UnorderedReleases(clast::Release, clast::Release),
-    UnorderedLinks(clast::Link, clast::Link),
+    UnorderedLinks(clast::ReleaseLink, clast::ReleaseLink),
     MissingLinks(Vec<String>),
     DanglingLinks(Vec<String>),
     InvalidIncrementBetweenReleases(clast::Release, clast::Release),
