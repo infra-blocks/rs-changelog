@@ -6,7 +6,7 @@ struct OrderedReleases;
 
 impl Rule for OrderedReleases {
     fn validate(&self, changelog: &clast::Changelog) -> Result<(), ValidationError> {
-        let releases = &changelog.releases;
+        let releases = &changelog.change_sets;
         if releases.is_empty() || releases.len() == 1 {
             return Ok(());
         }

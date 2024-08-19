@@ -1,0 +1,15 @@
+[package]
+name = "ast"
+description = """
+Tentative implementation of markdown parser."""
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+location = { path = "../location" }
+regex = "1.11.0"
+
+[dev-dependencies]
+
+[lints]
+workspace = true
