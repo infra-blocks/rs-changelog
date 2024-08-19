@@ -1,5 +1,5 @@
 use crate::position;
-use markdown::mdast::Node;
+use markdown::mdast::{Definition, Node};
 use markdown::unist;
 
 #[derive(Debug)]
@@ -30,12 +30,16 @@ impl<L: Into<String>, R: Into<String>> From<(L, R)> for DefinitionFields {
 }
 
 pub fn definition_node<T: Into<DefinitionFields>>(fields: T) -> Node {
+    Node::Definition(definition(fields))
+}
+
+pub fn definition<T: Into<DefinitionFields>>(fields: T) -> Definition {
     let fields = fields.into();
-    Node::Definition(markdown::mdast::Definition {
+    Definition {
         identifier: fields.identifier,
         url: fields.url,
         position: Some(fields.position),
         title: None,
         label: None,
-    })
+    }
 }

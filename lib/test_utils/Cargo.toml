@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 markdown = "1.0.0-alpha.17"
+
+[lints]
+workspace = true

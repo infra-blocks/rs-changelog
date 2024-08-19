@@ -1,42 +1,44 @@
 use chrono::Datelike;
-use std::fmt::Display;
 
+/// A date without a timezone.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NaiveDate(chrono::NaiveDate);
 
 impl NaiveDate {
+    /// Creates a new `NaiveDate` from the year, month, and day.
+    ///
+    /// Returns `None` if the date is invalid.
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Option<Self> {
         chrono::NaiveDate::from_ymd_opt(year, month, day).map(|d| Self(d))
     }
 
+    /// Creates a new `NaiveDate` from a string in the format `YYYY-MM-DD`.
+    ///
+    /// Returns `None` if the date is invalid or if the string is not in the correct format.
     pub fn from_ymd_str(date: &str) -> Option<Self> {
         chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
             .ok()
             .map(|d| Self(d))
     }
 
+    /// Returns the year component of the date.
     pub fn year(&self) -> i32 {
         self.0.year()
     }
 
+    /// Returns the month component of the date.
     pub fn month(&self) -> u32 {
         self.0.month()
     }
 
+    /// Returns the day component of the date.
     pub fn day(&self) -> u32 {
         self.0.day()
     }
-}
 
-impl Display for NaiveDate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}-{:02}-{:02}",
-            self.0.year(),
-            self.0.month(),
-            self.0.day()
-        )
+    /// Formats the date as a `YYYY-MM-DD` string.
+    pub fn to_ymd_string(&self) -> String {
+        format!("{}-{:02}-{:02}", self.year(), self.month(), self.day())
     }
 }
 
@@ -78,13 +80,13 @@ mod test {
         }
     }
 
-    mod display {
+    mod to_ymd_string {
         use super::*;
 
         #[test]
         fn works() {
             let date = NaiveDate::from_ymd(2021, 1, 1).unwrap();
-            assert_eq!(date.to_string(), "2021-01-01");
+            assert_eq!(date.to_ymd_string(), "2021-01-01");
         }
     }
 }

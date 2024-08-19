@@ -15,7 +15,7 @@ impl ReleasesStartAt {
 
 impl Rule for ReleasesStartAt {
     fn validate(&self, changelog: &clast::Changelog) -> Result<(), ValidationError> {
-        let releases = &changelog.releases;
+        let releases = &changelog.change_sets;
         let mut sorted = releases.to_vec();
         sorted.sort_by(|left, right| left.version.cmp(&right.version));
 

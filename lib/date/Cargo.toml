@@ -1,7 +1,13 @@
 [package]
 name = "date"
+description = """
+Thin wrapper around chrono to provide a layer of indirection between the latter and the changelog crate.
+"""
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
 chrono = "0.4.38"
+
+[lints]
+workspace = true

@@ -9,7 +9,7 @@ struct ReleasesMatchLinks;
 impl Rule for ReleasesMatchLinks {
     fn validate(&self, changelog: &clast::Changelog) -> Result<(), ValidationError> {
         let releases: HashSet<&Version> = changelog
-            .releases
+            .change_sets
             .iter()
             .map(|release| &release.version)
             .collect();

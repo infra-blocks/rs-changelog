@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = "4.4.18"
-clast = { path = "lib/clast"}
+clast = { path = "lib/clast" }
 date = { path = "lib/date" }
 eyre = "0.6.12"
 markdown = "1.0.0-alpha.17"
@@ -16,7 +16,16 @@ test_utils = { path = "./lib/test_utils" }
 
 [workspace]
 members = [
-  "lib/clast",
-  "lib/date",
-  "lib/test_utils"
+    "lib/assemble",
+    "lib/ast",
+    "lib/clast",
+    "lib/date",
+    "lib/location",
+    "lib/maybe_display",
+    "lib/mdast",
+    "lib/test_utils",
+    "lib/stack",
 ]
+
+[workspace.lints.rust]
+missing_docs = "warn"

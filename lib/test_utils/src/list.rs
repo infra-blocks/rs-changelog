@@ -2,7 +2,7 @@ use crate::position::position;
 use markdown::mdast::{List, ListItem, Node, Text};
 use markdown::unist;
 
-pub struct ListNodeFields {
+pub struct ListFields {
     pub position: unist::Position,
     pub children: Vec<Node>,
     pub ordered: bool,
@@ -10,7 +10,7 @@ pub struct ListNodeFields {
     pub start: Option<u32>,
 }
 
-impl Default for ListNodeFields {
+impl Default for ListFields {
     fn default() -> Self {
         Self {
             position: position(()),
@@ -22,13 +22,13 @@ impl Default for ListNodeFields {
     }
 }
 
-impl From<()> for ListNodeFields {
+impl From<()> for ListFields {
     fn from(_: ()) -> Self {
         Self::default()
     }
 }
 
-impl From<&[Node]> for ListNodeFields {
+impl From<&[Node]> for ListFields {
     fn from(children: &[Node]) -> Self {
         Self {
             children: children.to_vec(),
@@ -37,25 +37,29 @@ impl From<&[Node]> for ListNodeFields {
     }
 }
 
-pub fn list_node<T: Into<ListNodeFields>>(fields: T) -> Node {
+pub fn list_node<T: Into<ListFields>>(fields: T) -> Node {
+    Node::List(list(fields))
+}
+
+pub fn list<T: Into<ListFields>>(fields: T) -> List {
     let fields = fields.into();
-    Node::List(List {
+    List {
         position: Some(fields.position),
         children: fields.children,
         ordered: fields.ordered,
         spread: fields.spread,
         start: fields.start,
-    })
+    }
 }
 
-pub struct ListItemNodeFields {
+pub struct ListItemFields {
     pub position: unist::Position,
     pub children: Vec<Node>,
     pub spread: bool,
     pub checked: Option<bool>,
 }
 
-impl Default for ListItemNodeFields {
+impl Default for ListItemFields {
     fn default() -> Self {
         Self {
             position: position(()),
@@ -66,7 +70,7 @@ impl Default for ListItemNodeFields {
     }
 }
 
-impl<T: Into<String>> From<T> for ListItemNodeFields {
+impl<T: Into<String>> From<T> for ListItemFields {
     fn from(text: T) -> Self {
         Self {
             children: vec![Node::Text(Text {
@@ -78,12 +82,16 @@ impl<T: Into<String>> From<T> for ListItemNodeFields {
     }
 }
 
-pub fn list_item_node<T: Into<ListItemNodeFields>>(fields: T) -> Node {
+pub fn list_item_node<T: Into<ListItemFields>>(fields: T) -> Node {
+    Node::ListItem(list_item(fields))
+}
+
+pub fn list_item<T: Into<ListItemFields>>(fields: T) -> ListItem {
     let fields = fields.into();
-    Node::ListItem(ListItem {
+    ListItem {
         position: Some(fields.position),
         children: fields.children,
         spread: fields.spread,
         checked: fields.checked,
-    })
+    }
 }

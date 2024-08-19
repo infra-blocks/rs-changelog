@@ -11,6 +11,7 @@ use clast;
 pub struct Changelog {
     title: String,
     description: String,
+    unreleased: Option<ChangeSet>,
     releases: Vec<Release>,
     links: Vec<Link>,
 }
@@ -24,8 +25,8 @@ impl Changelog {
         &self.description
     }
 
-    pub fn releases(&self) -> &[Release] {
-        &self.releases
+    pub fn change_sets(&self) -> &[ChangeSet] {
+        &self.change_sets
     }
 
     pub fn links(&self) -> &[Link] {
@@ -37,13 +38,13 @@ impl From<clast::Changelog> for Changelog {
     fn from(value: clast::Changelog) -> Self {
         let title = value.title.text;
         let description = value.description.text;
-        let releases = value.releases.into_iter().map(Release::from).collect();
+        let releases = value.change_sets.into_iter().map(ChangeSet::from).collect();
         let links = value.links.into_iter().map(Link::from).collect();
 
         Changelog {
             title,
             description,
-            releases,
+            change_sets: releases,
             links,
         }
     }
@@ -81,27 +82,27 @@ impl Changelog {
 pub struct Release {
     version: Version,
     date: NaiveDate,
-    changes: Changes,
-}
-
-impl From<clast::Release> for Release {
-    fn from(value: clast::Release) -> Self {
-        Release {
-            version: value.version,
-            date: value.date,
-            changes: value.changes.into(),
-        }
-    }
+    change_set: ChangeSet,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Changes {
+pub struct ChangeSet {
     added: Vec<String>,
     changed: Vec<String>,
     deprecated: Vec<String>,
     removed: Vec<String>,
     fixed: Vec<String>,
     security: Vec<String>,
+}
+
+impl From<clast::ChangeSet> for ChangeSet {
+    fn from(value: clast::ChangeSet) -> Self {
+        ChangeSet {
+            version: value.version,
+            date: value.date,
+            changes: value.changes.into(),
+        }
+    }
 }
 
 impl From<clast::Changes> for Changes {
@@ -117,7 +118,7 @@ impl From<clast::Changes> for Changes {
     }
 }
 
-fn vec_from_change_set(change_set: Option<clast::ChangeSet>) -> Vec<String> {
+fn vec_from_change_set(change_set: Option<clast::ChangeSubset>) -> Vec<String> {
     change_set
         .into_iter()
         .map(|change_set| change_set.changes)
@@ -132,8 +133,8 @@ pub struct Link {
     version: Version,
 }
 
-impl From<clast::Link> for Link {
-    fn from(value: clast::Link) -> Self {
+impl From<clast::ReleaseLink> for Link {
+    fn from(value: clast::ReleaseLink) -> Self {
         Link {
             url: value.url,
             version: value.version,

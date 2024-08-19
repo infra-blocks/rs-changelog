@@ -1,14 +1,14 @@
 use crate::position::position;
 use crate::text::text_as_children;
-use markdown::mdast::Node;
+use markdown::mdast::{Node, Paragraph};
 use markdown::unist;
 
-pub struct ParagraphNodeFields {
+pub struct ParagraphFields {
     pub position: unist::Position,
     pub children: Vec<Node>,
 }
 
-impl Default for ParagraphNodeFields {
+impl Default for ParagraphFields {
     fn default() -> Self {
         Self {
             position: position(()),
@@ -17,19 +17,23 @@ impl Default for ParagraphNodeFields {
     }
 }
 
-impl<T: Into<String>> From<T> for ParagraphNodeFields {
+impl<T: Into<String>> From<T> for ParagraphFields {
     fn from(value: T) -> Self {
         Self {
             children: text_as_children(value),
-            ..ParagraphNodeFields::default()
+            ..ParagraphFields::default()
         }
     }
 }
 
-pub fn paragraph_node<T: Into<ParagraphNodeFields>>(fields: T) -> Node {
+pub fn paragraph_node<T: Into<ParagraphFields>>(fields: T) -> Node {
+    Node::Paragraph(paragraph(fields))
+}
+
+pub fn paragraph<T: Into<ParagraphFields>>(fields: T) -> Paragraph {
     let fields = fields.into();
-    Node::Paragraph(markdown::mdast::Paragraph {
+    Paragraph {
         position: Some(fields.position),
         children: fields.children,
-    })
+    }
 }

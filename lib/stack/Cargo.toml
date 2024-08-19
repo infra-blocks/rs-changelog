@@ -1,0 +1,9 @@
+[package]
+name = "stack"
+description = """
+This package exports a simple stack data structure."""
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true

@@ -11,7 +11,7 @@ fn minimal() {
         changelog.description(),
         r#"This is the minimum supported changelog."#
     );
-    assert_eq!(changelog.releases().len(), 1);
+    assert_eq!(changelog.change_sets().len(), 1);
     assert_eq!(changelog.links().len(), 1);
 }
 
@@ -31,6 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 "#
     );
-    assert_eq!(changelog.releases().len(), 15);
+    assert_eq!(changelog.change_sets().len(), 15);
     assert_eq!(changelog.links().len(), 15);
 }

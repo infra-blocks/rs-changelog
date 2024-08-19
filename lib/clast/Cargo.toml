@@ -1,12 +1,18 @@
 [package]
 name = "clast"
+description = """
+This library reduces and flattens the AST produced by the mdast crate into
+a intermediary structure that will make it convenient later on to assemble
+an actual changelog."""
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-date = { path = "../date" }
-markdown = "1.0.0-alpha.17"
-semver = "1.0.23"
+mdast = { path = "../mdast" }
+location = { path = "../location" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
+
+[lints]
+workspace = true

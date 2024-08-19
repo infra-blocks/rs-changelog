@@ -1,0 +1,9 @@
+[package]
+name = "location"
+description = """
+This package exposes the location utilities, which are used across the various crates of this workspace."""
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
