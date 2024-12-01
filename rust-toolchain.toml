@@ -1,3 +1,4 @@
 [toolchain]
-channel = "1.81.0"
+# On the nightly to use macro formatting features which aren't stable yet.
+channel = "1.84.0"
 components = ["rustfmt", "clippy"]

@@ -1,10 +1,4 @@
-mod block;
-/* mod document; */
-mod inline;
-mod segment;
-mod unwrap_singleton;
+mod api;
+pub(crate) mod internal;
 
-pub use block::*;
-/* pub use document::*; */
-pub use inline::*;
-pub use segment::*;
+pub use api::*;
