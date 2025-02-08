@@ -1,18 +1,14 @@
 use std::sync::LazyLock;
 
-use crate::{
-    internal::parse::try_extract::{Extraction, TryExtract},
-    Segment,
-};
+use crate::internal::parse::try_extract::{Extraction, TryExtract};
+use segment::{Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LooseLinkDestinationSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct LooseLinkDestinationSegment<'a>(pub Segment<'a>);
 
 impl<'a> LooseLinkDestinationSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     fn parentheseses_balance(segment: Segment<'a>) -> bool {

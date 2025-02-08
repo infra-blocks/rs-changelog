@@ -1,46 +1,44 @@
 mod state;
 
+use segment::{LineSegment, Segment};
 use state::{
     IdleNextState, IdleState, WithLabelAndDestinationParsingTitleState,
     WithLabelAndDestinationState, WithLabelNextState, WithLabelState,
 };
 
-use crate::{
-    internal::parse::parser::{Finalize, Ingest, IngestResult},
-    Segment,
-};
+use crate::internal::parse::parser::{Finalize, Ingest, IngestResult};
 
 use super::LinkReferenceDefinition;
 
 pub enum LinkReferenceDefinitionParserFailure<'a> {
-    Complete(Vec<Segment<'a>>),
-    Partial(LinkReferenceDefinition<'a>, Segment<'a>),
+    Complete(Vec<LineSegment<'a>>),
+    Partial(LinkReferenceDefinition<'a>, LineSegment<'a>),
 }
 
 impl<'a> LinkReferenceDefinitionParserFailure<'a> {
-    fn complete(segments: Vec<Segment<'a>>) -> Self {
+    fn complete(segments: Vec<LineSegment<'a>>) -> Self {
         Self::Complete(segments)
     }
 
     fn partial(
         link_reference_definition: LinkReferenceDefinition<'a>,
-        segment: Segment<'a>,
+        segment: LineSegment<'a>,
     ) -> Self {
         Self::Partial(link_reference_definition, segment)
     }
 }
 
-impl<'a> From<Vec<Segment<'a>>> for LinkReferenceDefinitionParserFailure<'a> {
-    fn from(segments: Vec<Segment<'a>>) -> Self {
+impl<'a> From<Vec<LineSegment<'a>>> for LinkReferenceDefinitionParserFailure<'a> {
+    fn from(segments: Vec<LineSegment<'a>>) -> Self {
         Self::complete(segments)
     }
 }
 
-impl<'a> From<(LinkReferenceDefinition<'a>, Segment<'a>)>
+impl<'a> From<(LinkReferenceDefinition<'a>, LineSegment<'a>)>
     for LinkReferenceDefinitionParserFailure<'a>
 {
     fn from(
-        (link_reference_definition, segment): (LinkReferenceDefinition<'a>, Segment<'a>),
+        (link_reference_definition, segment): (LinkReferenceDefinition<'a>, LineSegment<'a>),
     ) -> Self {
         Self::partial(link_reference_definition, segment)
     }
@@ -91,7 +89,7 @@ impl<'a> From<WithLabelAndDestinationParsingTitleState<'a>> for LinkReferenceDef
 }
 
 impl<'a> Ingest for LinkReferenceDefinitionParser<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = LinkReferenceDefinition<'a>;
     type Failure = LinkReferenceDefinitionParserFailure<'a>;
@@ -127,7 +125,7 @@ impl<'a> Ingest for LinkReferenceDefinitionParser<'a> {
 }
 
 pub enum LinkReferenceDefinitionParserFinalizeResult<'a> {
-    Failure(Vec<Segment<'a>>),
+    Failure(Vec<LineSegment<'a>>),
     // This only happens when we have the link label and destination, and we are not in the process of building a title.
     Success(LinkReferenceDefinition<'a>),
 }

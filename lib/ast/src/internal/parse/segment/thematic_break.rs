@@ -1,19 +1,19 @@
 use std::sync::LazyLock;
 
-use crate::Segment;
+use segment::{LineSegment, SegmentLike};
 
 /// A thematic break segment.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ThematicBreakSegment<'a>(pub Segment<'a>);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ThematicBreakSegment<'a>(pub LineSegment<'a>);
 
 impl<'a> ThematicBreakSegment<'a> {
-    fn new(segment: Segment<'a>) -> Self {
+    fn new(segment: LineSegment<'a>) -> Self {
         Self(segment)
     }
 }
 
-impl<'a> From<ThematicBreakSegment<'a>> for Segment<'a> {
-    fn from(thematic_break: ThematicBreakSegment<'a>) -> Segment<'a> {
+impl<'a> From<ThematicBreakSegment<'a>> for LineSegment<'a> {
+    fn from(thematic_break: ThematicBreakSegment<'a>) -> LineSegment<'a> {
         thematic_break.0
     }
 }
@@ -24,11 +24,11 @@ static REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"^[ ]{0,3}(?:(?:_[ \t]*){3,}|(?:-[ \t]*){3,}|(?:\*[ \t]*){3,})\n?$").unwrap()
 });
 
-impl<'a> TryFrom<Segment<'a>> for ThematicBreakSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for ThematicBreakSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
-        if REGEX.is_match(&segment.text()) {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
+        if REGEX.is_match(segment.text()) {
             Ok(ThematicBreakSegment::new(segment))
         } else {
             Err(segment)
@@ -42,6 +42,8 @@ mod test {
 
     // Test segment validity.
     mod try_from {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -68,40 +70,37 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empty, Segment::first(""));
-        failure_case!(should_reject_blank_line, Segment::first("  \n"));
-        failure_case!(should_reject_tab_indent, Segment::first("\t---\n"));
-        failure_case!(
-            should_reject_four_spaces_indent,
-            Segment::first("    ---\n")
-        );
+        failure_case!(should_reject_empty, LineSegment::default());
+        failure_case!(should_reject_blank_line, "  \n".line());
+        failure_case!(should_reject_tab_indent, "\t---\n".line());
+        failure_case!(should_reject_four_spaces_indent, "    ---\n".line());
         failure_case!(
             should_reject_non_consecutive_tokens,
-            Segment::first(" -_*\n")
+            " -_*\n".line()
         );
         failure_case!(
             should_reject_with_presence_of_other_characters,
-            Segment::first("---a\n")
+            "---a\n".line()
         );
 
-        success_case!(should_work_with_three_underscores, Segment::first("___\n"));
-        success_case!(should_work_with_four_underscores, Segment::first("____\n"));
-        success_case!(should_work_with_three_hyphens, Segment::first("---\n"));
-        success_case!(should_work_with_four_hyphens, Segment::first("----\n"));
-        success_case!(should_work_with_three_asterisks, Segment::first("***\n"));
-        success_case!(should_work_with_four_asterisks, Segment::first("****\n"));
+        success_case!(should_work_with_three_underscores, "___\n".line());
+        success_case!(should_work_with_four_underscores, "____\n".line());
+        success_case!(should_work_with_three_hyphens, "---\n".line());
+        success_case!(should_work_with_four_hyphens, "----\n".line());
+        success_case!(should_work_with_three_asterisks, "***\n".line());
+        success_case!(should_work_with_four_asterisks, "****\n".line());
         success_case!(
             should_work_with_three_spaces_indent,
-            Segment::first("   ---\n")
+            "   ---\n".line()
         );
         success_case!(
             should_work_with_trailing_whitespace,
-            Segment::first("--- \n")
+            "--- \n".line()
         );
         success_case!(
             should_work_with_spaces_interspersed,
-            Segment::first(" - - -\n")
+            " - - -\n".line()
         );
-        success_case!(should_work_without_eol, Segment::first("---"));
+        success_case!(should_work_without_eol, "---".line());
     }
 }

@@ -6,7 +6,7 @@ pub use double_quotes::*;
 pub use parentheses::*;
 pub use single_quotes::*;
 
-use crate::Segment;
+use segment::Segment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LinkTitleOpeningSegment<'a> {
@@ -136,7 +136,7 @@ mod test {
             let result = LinkTitleOpeningSegment::try_from(segment.clone())
                 .unwrap()
                 .unwrap_single_quotes();
-            assert_eq!(result.segment, segment);
+            assert_eq!(result.0, segment);
             assert_eq!(result.is_closing(), false);
         }
 
@@ -146,7 +146,7 @@ mod test {
             let result = LinkTitleOpeningSegment::try_from(segment.clone())
                 .unwrap()
                 .unwrap_double_quotes();
-            assert_eq!(result.segment, segment);
+            assert_eq!(result.0, segment);
             assert_eq!(result.is_closing(), false);
         }
 
@@ -156,7 +156,7 @@ mod test {
             let result = LinkTitleOpeningSegment::try_from(segment.clone())
                 .unwrap()
                 .unwrap_parentheses();
-            assert_eq!(result.segment, segment);
+            assert_eq!(result.0, segment);
             assert_eq!(result.is_closing(), false);
         }
     }
@@ -172,7 +172,7 @@ mod test {
                 LinkTitleContinuationSegment::try_from(segment.clone()).unwrap();
             assert!(continuation_segment.is_closing());
             let single_quotes = continuation_segment.unwrap_single_quotes();
-            assert_eq!(single_quotes.segment, segment);
+            assert_eq!(single_quotes.0, segment);
             assert!(single_quotes.is_closing());
         }
 
@@ -183,7 +183,7 @@ mod test {
                 LinkTitleContinuationSegment::try_from(segment.clone()).unwrap();
             assert!(continuation_segment.is_closing());
             let double_quotes = continuation_segment.unwrap_double_quotes();
-            assert_eq!(double_quotes.segment, segment);
+            assert_eq!(double_quotes.0, segment);
             assert!(double_quotes.is_closing());
         }
 
@@ -194,7 +194,7 @@ mod test {
                 LinkTitleContinuationSegment::try_from(segment.clone()).unwrap();
             assert!(continuation_segment.is_closing());
             let parentheses = continuation_segment.unwrap_parentheses();
-            assert_eq!(parentheses.segment, segment);
+            assert_eq!(parentheses.0, segment);
             assert!(parentheses.is_closing());
         }
     }

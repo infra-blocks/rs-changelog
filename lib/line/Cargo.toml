@@ -1,0 +1,10 @@
+[package]
+name = "line"
+description = """
+This package enhances typings around lines of text.
+"""
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true

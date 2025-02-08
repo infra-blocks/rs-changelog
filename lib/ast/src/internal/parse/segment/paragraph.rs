@@ -5,8 +5,10 @@ use std::{
 
 use crate::{
     internal::parse::try_extract::{Extraction, TryExtract},
-    IntoSegments, Segment,
+    IntoLineSegments,
 };
+
+use segment::{LineSegment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParagraphSegments<'a> {
@@ -41,22 +43,22 @@ impl<'a> From<ParagraphSegments<'a>> for ParagraphSegmentsIter<'a> {
 }
 
 impl<'a> Iterator for ParagraphSegmentsIter<'a> {
-    type Item = Segment<'a>;
+    type Item = LineSegment<'a>;
 
-    fn next(&mut self) -> Option<Segment<'a>> {
+    fn next(&mut self) -> Option<LineSegment<'a>> {
         match self.opening_segment.take() {
-            Some(opening) => Some(opening.into()),
-            None => self.continuations.next().map(|c| c.into()),
+            Some(opening) => Some(LineSegment::from(opening.0)),
+            None => self
+                .continuations
+                .next()
+                .map(|continuation| LineSegment::from(continuation.0)),
         }
     }
 }
 
-// TODO: into_iter?
-impl<'a> IntoSegments<'a> for ParagraphSegments<'a> {
-    type IntoIter = ParagraphSegmentsIter<'a>;
-
-    fn into_segments(self) -> Self::IntoIter {
-        self.into()
+impl<'a> IntoLineSegments<'a> for ParagraphSegments<'a> {
+    fn into_line_segments(self) -> impl Iterator<Item = LineSegment<'a>> {
+        ParagraphSegmentsIter::from(self)
     }
 }
 
@@ -68,14 +70,14 @@ impl<'a> From<ParagraphOpeningSegment<'a>> for ParagraphSegments<'a> {
 
 impl<'a, I> TryExtract<I> for ParagraphSegments<'a>
 where
-    I: Iterator<Item = Segment<'a>>,
+    I: Iterator<Item = LineSegment<'a>>,
 {
-    type Remaining = Option<Chain<Once<Segment<'a>>, I>>;
-    type Error = Option<Segment<'a>>;
+    type Remaining = Option<Chain<Once<LineSegment<'a>>, I>>;
+    type Error = Option<LineSegment<'a>>;
 
     fn try_extract(
         mut segments: I,
-    ) -> Result<Extraction<Self, Option<Chain<Once<Segment<'a>>, I>>>, Self::Error> {
+    ) -> Result<Extraction<Self, Option<Chain<Once<LineSegment<'a>>, I>>>, Self::Error> {
         let Some(first) = segments.next() else {
             return Err(None);
         };
@@ -106,15 +108,15 @@ where
 ///
 /// Unlike [ParagraphContinuationSegment]s, this type cannot contain text with more than 3 leading whitespaces.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParagraphOpeningSegment<'a>(pub Segment<'a>);
+pub struct ParagraphOpeningSegment<'a>(pub LineSegment<'a>);
 
 impl<'a> ParagraphOpeningSegment<'a> {
-    fn new(segment: Segment<'a>) -> Self {
+    fn new(segment: LineSegment<'a>) -> Self {
         Self(segment)
     }
 }
 
-impl<'a> From<ParagraphOpeningSegment<'a>> for Segment<'a> {
+impl<'a> From<ParagraphOpeningSegment<'a>> for LineSegment<'a> {
     fn from(paragraph_opening: ParagraphOpeningSegment<'a>) -> Self {
         paragraph_opening.0
     }
@@ -122,12 +124,12 @@ impl<'a> From<ParagraphOpeningSegment<'a>> for Segment<'a> {
 
 // Paragraphs require at least one non whitespace character.
 static OPENING_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"^[ ]{0,3}\S+.*?\s+$").unwrap());
+    LazyLock::new(|| regex::Regex::new(r"^[ ]{0,3}\S+.*\n?$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for ParagraphOpeningSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for ParagraphOpeningSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         if OPENING_REGEX.is_match(segment.text()) {
             Ok(Self::new(segment))
         } else {
@@ -140,27 +142,28 @@ impl<'a> TryFrom<Segment<'a>> for ParagraphOpeningSegment<'a> {
 ///
 /// Unlike [ParagraphOpeningSegment]s, this type can contain text with more than 3 leading whitespaces.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParagraphContinuationSegment<'a>(pub Segment<'a>);
+pub struct ParagraphContinuationSegment<'a>(pub LineSegment<'a>);
 
 impl<'a> ParagraphContinuationSegment<'a> {
-    fn new(segment: Segment<'a>) -> Self {
+    fn new(segment: LineSegment<'a>) -> Self {
         Self(segment)
     }
 }
 
-impl<'a> From<ParagraphContinuationSegment<'a>> for Segment<'a> {
+impl<'a> From<ParagraphContinuationSegment<'a>> for LineSegment<'a> {
     fn from(paragraph_continuation: ParagraphContinuationSegment<'a>) -> Self {
         paragraph_continuation.0
     }
 }
 
 static CONTINUATION_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"^\s*\S.*\n$").unwrap());
+    LazyLock::new(|| regex::Regex::new(r"^\s*\S.*\n?$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for ParagraphContinuationSegment<'a> {
-    type Error = Segment<'a>;
+// TODO: use regex on text_without_newline() or something? That would remove the need for all them optional \n at the end of the regexes.
+impl<'a> TryFrom<LineSegment<'a>> for ParagraphContinuationSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         if CONTINUATION_REGEX.is_match(&segment.text()) {
             Ok(Self::new(segment))
         } else {
@@ -174,6 +177,8 @@ mod test {
     use super::*;
 
     mod opening {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -200,19 +205,19 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empty, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(should_reject_4_indents, Segment::first("    Hello\n"));
-        failure_case!(
-            should_reject_missing_ending_newline,
-            Segment::first("Hello")
-        );
+        failure_case!(should_reject_empty, LineSegment::default());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_4_indents, "    Hello\n".line());
+        // TODO: this should pass now, as the paragraph can be opened on the last line and it can lack a newline.
+        failure_case!(should_reject_missing_ending_newline, "Hello".line());
 
-        success_case!(should_work_with_valid_phrase, Segment::first("Hello\n"));
-        success_case!(should_work_with_3_indents, Segment::first("   Hello\n"));
+        success_case!(should_work_with_valid_phrase, "Hello\n".line());
+        success_case!(should_work_with_3_indents, "   Hello\n".line());
     }
 
     mod continuation {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -239,15 +244,12 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empty, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(
-            should_reject_missing_ending_newline,
-            Segment::first("Hello")
-        );
+        failure_case!(should_reject_empty, LineSegment::default());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_missing_ending_newline, "Hello".line());
 
-        success_case!(should_work_with_valid_phrase, Segment::first("Hello\n"));
-        success_case!(should_work_with_4_indents, Segment::first("    Hello\n"));
-        success_case!(should_work_with_tab_indent, Segment::first("\tHello\n"));
+        success_case!(should_work_with_valid_phrase, "Hello\n".line());
+        success_case!(should_work_with_4_indents, "    Hello\n".line());
+        success_case!(should_work_with_tab_indent, "\tHello\n".line());
     }
 }

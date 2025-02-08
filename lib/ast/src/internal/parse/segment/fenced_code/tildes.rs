@@ -1,10 +1,10 @@
 use std::sync::LazyLock;
 
-use crate::Segment;
+use segment::{LineSegment, Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TildesFencedCodeOpeningSegment<'a> {
-    pub segment: Segment<'a>,
+    pub segment: LineSegment<'a>,
     pub indent: usize,
     // The amount of tildes used, minimally 3.
     pub fence_length: usize,
@@ -13,7 +13,7 @@ pub struct TildesFencedCodeOpeningSegment<'a> {
 
 impl<'a> TildesFencedCodeOpeningSegment<'a> {
     fn new(
-        segment: Segment<'a>,
+        segment: LineSegment<'a>,
         indent: usize,
         fence_length: usize,
         info_string: Option<Segment<'a>>,
@@ -31,10 +31,10 @@ impl<'a> TildesFencedCodeOpeningSegment<'a> {
 static TILDE_OPENING_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^([ ]{0,3})(~{3,})\s*(.+?)?\s*$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for TildesFencedCodeOpeningSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for TildesFencedCodeOpeningSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         let captures = TILDE_OPENING_REGEX
             .captures(segment.text())
             .ok_or(segment)?;
@@ -59,13 +59,13 @@ impl<'a> TryFrom<Segment<'a>> for TildesFencedCodeOpeningSegment<'a> {
 // Closing segments don't have info strings.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TildesFencedCodeClosingSegment<'a> {
-    pub segment: Segment<'a>,
+    pub segment: LineSegment<'a>,
     pub indent: usize,
     pub fence_length: usize,
 }
 
 impl<'a> TildesFencedCodeClosingSegment<'a> {
-    fn new(segment: Segment<'a>, indent: usize, fence_length: usize) -> Self {
+    fn new(segment: LineSegment<'a>, indent: usize, fence_length: usize) -> Self {
         Self {
             segment,
             indent,
@@ -78,10 +78,10 @@ impl<'a> TildesFencedCodeClosingSegment<'a> {
 static TILDE_CLOSING_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^([ ]{0,3})(~{3,})\s*$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for TildesFencedCodeClosingSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for TildesFencedCodeClosingSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         let captures = TILDE_CLOSING_REGEX
             .captures(segment.text())
             .ok_or(segment)?;
@@ -99,6 +99,8 @@ mod test {
     use super::*;
 
     mod opening {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -125,30 +127,30 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empy, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(should_reject_2_tildes, Segment::first("~~\n"));
+        failure_case!(should_reject_empy, LineSegment::default());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_2_tildes, "~~\n".line());
         failure_case!(
             should_reject_4_whitespace_indent,
-            Segment::first("    ~~~\n")
+            "    ~~~\n".line()
         );
-        failure_case!(should_reject_tab_indent, Segment::first("\t~~~\n"));
+        failure_case!(should_reject_tab_indent, "\t~~~\n".line());
 
         success_case!(
             should_work_with_3_tildes,
-            Segment::first("~~~\n"),
-            TildesFencedCodeOpeningSegment::new(Segment::first("~~~\n"), 0, 3, None)
+            "~~~\n".line(),
+            TildesFencedCodeOpeningSegment::new("~~~\n".line(), 0, 3, None)
         );
         success_case!(
             should_work_with_3_tildes_and_3_whitespace_ident,
-            Segment::first("   ~~~\n"),
-            TildesFencedCodeOpeningSegment::new(Segment::first("   ~~~\n"), 3, 3, None)
+            "   ~~~\n".line(),
+            TildesFencedCodeOpeningSegment::new("   ~~~\n".line(), 3, 3, None)
         );
         success_case!(
             should_work_with_info_string,
-            Segment::first("~~~rust\n"),
+            "~~~rust\n".line(),
             TildesFencedCodeOpeningSegment::new(
-                Segment::first("~~~rust\n"),
+                "~~~rust\n".line(),
                 0,
                 3,
                 Some(Segment::new(location::Position::new(1, 4, 3), "rust"))
@@ -156,9 +158,9 @@ mod test {
         );
         success_case!(
             should_work_tildes_in_info_string,
-            Segment::first("~~~rust~\n"),
+            "~~~rust~\n".line(),
             TildesFencedCodeOpeningSegment::new(
-                Segment::first("~~~rust~\n"),
+                "~~~rust~\n".line(),
                 0,
                 3,
                 Some(Segment::new(location::Position::new(1, 4, 3), "rust~"))
@@ -166,20 +168,19 @@ mod test {
         );
         success_case!(
             should_work_backticks_in_info_string,
-            Segment::first("~~~rust`\n"),
+            "~~~rust`\n".line(),
             TildesFencedCodeOpeningSegment::new(
-                Segment::first("~~~rust`\n"),
+                "~~~rust`\n".line(),
                 0,
                 3,
                 Some(Segment::new(location::Position::new(1, 4, 3), "rust`"))
             )
         );
-
         success_case!(
             should_work_with_padded_info_string,
-            Segment::first("~~~   rust is kind of fucking cool   \n"),
+            "~~~   rust is kind of fucking cool   \n".line(),
             TildesFencedCodeOpeningSegment::new(
-                Segment::first("~~~   rust is kind of fucking cool   \n"),
+                "~~~   rust is kind of fucking cool   \n".line(),
                 0,
                 3,
                 Some(Segment::new(
@@ -191,6 +192,8 @@ mod test {
     }
 
     mod closing {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -217,35 +220,35 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empy, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(should_reject_2_tildes, Segment::first("~~\n"));
-        failure_case!(should_reject_info_string, Segment::first("~~~rust\n"));
+        failure_case!(should_reject_empy, LineSegment::default());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_2_tildes, "~~\n".line());
+        failure_case!(should_reject_info_string, "~~~rust\n".line());
         failure_case!(
             should_reject_4_whitespace_indent,
-            Segment::first("    ~~~\n")
+            "    ~~~\n".line()
         );
-        failure_case!(should_reject_tab_indent, Segment::first("\t~~~\n"));
+        failure_case!(should_reject_tab_indent, "\t~~~\n".line());
 
         success_case!(
             should_work_with_3_tildes,
-            Segment::first("~~~\n"),
-            TildesFencedCodeClosingSegment::new(Segment::first("~~~\n"), 0, 3)
+            "~~~\n".line(),
+            TildesFencedCodeClosingSegment::new("~~~\n".line(), 0, 3)
         );
         success_case!(
             should_work_with_4_tildes,
-            Segment::first("~~~~\n"),
-            TildesFencedCodeClosingSegment::new(Segment::first("~~~~\n"), 0, 4)
+            "~~~~\n".line(),
+            TildesFencedCodeClosingSegment::new("~~~~\n".line(), 0, 4)
         );
         success_case!(
             should_work_with_trailing_whitespaces,
-            Segment::first("~~~   \t\n"),
-            TildesFencedCodeClosingSegment::new(Segment::first("~~~   \t\n"), 0, 3)
+            "~~~   \t\n".line(),
+            TildesFencedCodeClosingSegment::new("~~~   \t\n".line(), 0, 3)
         );
         success_case!(
             should_work_with_3_whitespaces_indent,
-            Segment::first("   ~~~\n"),
-            TildesFencedCodeClosingSegment::new(Segment::first("   ~~~\n"), 3, 3)
+            "   ~~~\n".line(),
+            TildesFencedCodeClosingSegment::new("   ~~~\n".line(), 3, 3)
         );
     }
 }

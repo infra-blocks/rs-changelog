@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::Segment;
+use segment::{LineSegment, SegmentLike};
 
 /// Represents an ATX heading segment.
 ///
@@ -8,7 +8,7 @@ use crate::Segment;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AtxHeadingSegment<'a> {
     /// The source segment from which this struct was constructed.
-    pub segment: Segment<'a>,
+    pub segment: LineSegment<'a>,
     /// The title of the heading, if any.
     pub title: Option<&'a str>,
     /// The level of the heading, from 1 to 6.
@@ -16,7 +16,7 @@ pub struct AtxHeadingSegment<'a> {
 }
 
 impl<'a> AtxHeadingSegment<'a> {
-    fn new(segment: Segment<'a>, title: Option<&'a str>, level: u8) -> Self {
+    fn new(segment: LineSegment<'a>, title: Option<&'a str>, level: u8) -> Self {
         Self {
             segment,
             title,
@@ -25,8 +25,8 @@ impl<'a> AtxHeadingSegment<'a> {
     }
 }
 
-impl<'a> From<AtxHeadingSegment<'a>> for Segment<'a> {
-    fn from(heading: AtxHeadingSegment<'a>) -> Segment<'a> {
+impl<'a> From<AtxHeadingSegment<'a>> for LineSegment<'a> {
+    fn from(heading: AtxHeadingSegment<'a>) -> LineSegment<'a> {
         heading.segment
     }
 }
@@ -49,10 +49,10 @@ static REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"(^[ ]{0,3}(#{1,6}))(?:(?:\s+#*)|(?:(\s+)(\S.*?))(?:\s+#*)?)?\s*$").unwrap()
 });
 
-impl<'a> TryFrom<Segment<'a>> for AtxHeadingSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for AtxHeadingSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         let Some(captures) = REGEX.captures(segment.text()) else {
             return Err(segment);
         };
@@ -74,6 +74,8 @@ mod test {
     use super::*;
 
     mod try_from {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -94,107 +96,103 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empty_segment, Segment::first(""));
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(should_reject_tab_indent, Segment::first("\t# Heading\n"));
+        failure_case!(should_reject_empty_segment, "".line());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_tab_indent, "\t# Heading\n".line());
         failure_case!(
             should_reject_4_whitespaces_prefix,
-            Segment::first("    # Heading\n")
+            "    # Heading\n".line()
         );
         failure_case!(
             should_reject_missing_whitespace_before_content,
-            Segment::first("#hashtag\n")
+            "#hashtag\n".line()
         );
         failure_case!(
             should_reject_if_not_just_hash_before_content,
-            Segment::first("#5 Heading\n")
+            "#5 Heading\n".line()
         );
-        failure_case!(should_reject_7_hashes, Segment::first("####### Heading\n"));
-        failure_case!(should_reject_escaped_hash, Segment::first(r"\## Heading\n"));
+        failure_case!(should_reject_7_hashes, "####### Heading\n".line());
+        failure_case!(should_reject_escaped_hash, r"\## Heading\n".line());
 
         success_case!(
             should_work_with_simple_case,
-            Segment::first("# Heading\n"),
-            AtxHeadingSegment::new(Segment::first("# Heading\n"), Some("Heading"), 1)
+            "# Heading\n".line(),
+            AtxHeadingSegment::new("# Heading\n".line(), Some("Heading"), 1)
         );
         success_case!(
             should_work_with_2_hashes,
-            Segment::first("## Heading\n"),
-            AtxHeadingSegment::new(Segment::first("## Heading\n"), Some("Heading"), 2)
+            "## Heading\n".line(),
+            AtxHeadingSegment::new("## Heading\n".line(), Some("Heading"), 2)
         );
         success_case!(
             should_work_with_3_hashes,
-            Segment::first("### Heading\n"),
-            AtxHeadingSegment::new(Segment::first("### Heading\n"), Some("Heading"), 3)
+            "### Heading\n".line(),
+            AtxHeadingSegment::new("### Heading\n".line(), Some("Heading"), 3)
         );
         success_case!(
             should_work_with_4_hashes,
-            Segment::first("#### Heading\n"),
-            AtxHeadingSegment::new(Segment::first("#### Heading\n"), Some("Heading"), 4)
+            "#### Heading\n".line(),
+            AtxHeadingSegment::new("#### Heading\n".line(), Some("Heading"), 4)
         );
         success_case!(
             should_work_with_5_hashes,
-            Segment::first("##### Heading\n"),
-            AtxHeadingSegment::new(Segment::first("##### Heading\n"), Some("Heading"), 5)
+            "##### Heading\n".line(),
+            AtxHeadingSegment::new("##### Heading\n".line(), Some("Heading"), 5)
         );
         success_case!(
             should_work_with_6_hashes,
-            Segment::first("###### Heading\n"),
-            AtxHeadingSegment::new(Segment::first("###### Heading\n"), Some("Heading"), 6)
+            "###### Heading\n".line(),
+            AtxHeadingSegment::new("###### Heading\n".line(), Some("Heading"), 6)
         );
         success_case!(
             should_work_with_3_spaces_indent,
-            Segment::first("   # Heading\n"),
-            AtxHeadingSegment::new(Segment::first("   # Heading\n"), Some("Heading"), 1)
+            "   # Heading\n".line(),
+            AtxHeadingSegment::new("   # Heading\n".line(), Some("Heading"), 1)
         );
         success_case!(
             should_work_with_trailing_hashes,
-            Segment::first("# Heading ###  \t  \n"),
-            AtxHeadingSegment::new(Segment::first("# Heading ###  \t  \n"), Some("Heading"), 1)
+            "# Heading ###  \t  \n".line(),
+            AtxHeadingSegment::new("# Heading ###  \t  \n".line(), Some("Heading"), 1)
         );
         success_case!(
             should_include_trailing_hash_in_content_if_missing_whitespace,
-            Segment::first("# Heading#\n"),
-            AtxHeadingSegment::new(Segment::first("# Heading#\n"), Some("Heading#"), 1)
+            "# Heading#\n".line(),
+            AtxHeadingSegment::new("# Heading#\n".line(), Some("Heading#"), 1)
         );
         success_case!(
-            should_work_with_empty_heading,
-            Segment::first("#\n"),
-            AtxHeadingSegment::new(Segment::first("#\n"), None, 1)
+            should_work_with_empty_heading_without_newline,
+            "#".line(),
+            AtxHeadingSegment::new("#".line(), None, 1)
         );
         success_case!(
             should_work_with_blank_heading,
-            Segment::first("#       \n"),
-            AtxHeadingSegment::new(Segment::first("#       \n"), None, 1)
+            "#       \n".line(),
+            AtxHeadingSegment::new("#       \n".line(), None, 1)
         );
         success_case!(
             should_work_with_empty_heading_and_trailing_hashes,
-            Segment::first("## ###\n"),
-            AtxHeadingSegment::new(Segment::first("## ###\n"), None, 2)
+            "## ###\n".line(),
+            AtxHeadingSegment::new("## ###\n".line(), None, 2)
         );
         success_case!(
             should_work_with_hash_content,
-            Segment::first("# ### #\n"),
-            AtxHeadingSegment::new(Segment::first("# ### #\n"), Some("###"), 1)
+            "# ### #\n".line(),
+            AtxHeadingSegment::new("# ### #\n".line(), Some("###"), 1)
         );
         success_case!(
             should_work_with_characters_after_what_appears_to_be_a_closing_sequence,
-            Segment::first("### foo ### b\n"),
-            AtxHeadingSegment::new(Segment::first("### foo ### b\n"), Some("foo ### b"), 3)
+            "### foo ### b\n".line(),
+            AtxHeadingSegment::new("### foo ### b\n".line(), Some("foo ### b"), 3)
         );
         success_case!(
             should_work_with_escaped_hash_as_content,
-            Segment::first("# Heading #\\##\n"),
-            AtxHeadingSegment::new(
-                Segment::first("# Heading #\\##\n"),
-                Some("Heading #\\##"),
-                1
-            )
+            "# Heading #\\##\n".line(),
+            AtxHeadingSegment::new("# Heading #\\##\n".line(), Some("Heading #\\##"), 1)
         );
         success_case!(
             should_work_with_missing_eol,
-            Segment::first("# Heading"),
-            AtxHeadingSegment::new(Segment::first("# Heading"), Some("Heading"), 1)
+            "# Heading".line(),
+            AtxHeadingSegment::new("# Heading".line(), Some("Heading"), 1)
         );
     }
 }

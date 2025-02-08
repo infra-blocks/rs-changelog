@@ -9,15 +9,11 @@ pub use atx_heading::*;
 pub use blank_line::*;
 pub use fenced_code::*;
 pub use indented_code::*;
+pub use paragraph::*;
+use segment::LineSegment;
 pub use thematic_break::*;
 
-use crate::{
-    internal::parse::{
-        parser::{Finalize, Ingest, IngestResult},
-        segment,
-    },
-    Segment,
-};
+use crate::internal::parse::parser::{Finalize, Ingest, IngestResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Leaf<'a> {
@@ -79,8 +75,8 @@ impl<'a> LeafParser<'a> {
 
 pub(super) enum IngestSuccess<'a> {
     Single(Leaf<'a>),
-    SingleWithInterrupt(Leaf<'a>, Segment<'a>),
-    MultipleWithInterrupt(Vec<Leaf<'a>>, Segment<'a>),
+    SingleWithInterrupt(Leaf<'a>, LineSegment<'a>),
+    MultipleWithInterrupt(Vec<Leaf<'a>>, LineSegment<'a>),
 }
 
 impl<'a> From<indented_code::IngestSuccess<'a>> for IngestSuccess<'a> {
@@ -104,10 +100,10 @@ impl<'a> From<indented_code::IngestSuccess<'a>> for IngestSuccess<'a> {
 }
 
 impl<'a> Ingest for LeafParser<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = IngestSuccess<'a>;
-    type Failure = Segment<'a>;
+    type Failure = LineSegment<'a>;
 
     fn ingest(self, input: Self::Input) -> IngestResult<Self::Ready, Self::Success, Self::Failure> {
         match self {

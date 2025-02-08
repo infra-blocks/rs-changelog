@@ -4,7 +4,7 @@ mod hyphens;
 pub use equals::*;
 pub use hyphens::*;
 
-use crate::Segment;
+use segment::LineSegment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetextHeadingUnderlineSegment<'a> {
@@ -33,10 +33,10 @@ impl<'a> From<SetextHeadingHyphensUnderlineSegment<'a>> for SetextHeadingUnderli
     }
 }
 
-impl<'a> TryFrom<Segment<'a>> for SetextHeadingUnderlineSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for SetextHeadingUnderlineSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         if let Ok(segment) = SetextHeadingEqualsUnderlineSegment::try_from(segment) {
             Ok(segment.into())
         } else if let Ok(segment) = SetextHeadingHyphensUnderlineSegment::try_from(segment) {
@@ -49,6 +49,8 @@ impl<'a> TryFrom<Segment<'a>> for SetextHeadingUnderlineSegment<'a> {
 
 #[cfg(test)]
 mod test {
+    use segment::SegmentStrExt;
+
     use super::*;
 
     macro_rules! failure_case {
@@ -75,21 +77,21 @@ mod test {
         };
     }
 
-    failure_case!(should_reject_empty, Segment::default());
-    failure_case!(should_reject_blank_line, Segment::first("\n"));
+    failure_case!(should_reject_empty, LineSegment::default());
+    failure_case!(should_reject_blank_line, "\n".line());
 
     success_case!(
         should_accept_equals,
-        Segment::first("=\n"),
+        "=\n".line(),
         SetextHeadingUnderlineSegment::Equals(
-            SetextHeadingEqualsUnderlineSegment::try_from(Segment::first("=\n")).unwrap()
+            SetextHeadingEqualsUnderlineSegment::try_from("=\n".line()).unwrap()
         )
     );
     success_case!(
         should_accept_hyphens,
-        Segment::first("-\n"),
+        "-\n".line(),
         SetextHeadingUnderlineSegment::Hyphens(
-            SetextHeadingHyphensUnderlineSegment::try_from(Segment::first("-\n")).unwrap()
+            SetextHeadingHyphensUnderlineSegment::try_from("-\n".line()).unwrap()
         )
     );
 }

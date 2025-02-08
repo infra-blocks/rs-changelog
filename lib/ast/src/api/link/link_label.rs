@@ -1,4 +1,4 @@
-use crate::Segment;
+use segment::Segment;
 
 /// This struct represents a link lable as described in the [CommonMark spec](https://spec.commonmark.org/0.31.2/#link-label).
 ///

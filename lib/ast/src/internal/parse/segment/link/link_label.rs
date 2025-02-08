@@ -1,18 +1,14 @@
 use std::{char, sync::LazyLock};
 
-use crate::{
-    internal::parse::try_extract::{Extraction, TryExtract},
-    Segment,
-};
+use crate::internal::parse::try_extract::{Extraction, TryExtract};
+use segment::{Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LinkLabelSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct LinkLabelSegment<'a>(pub Segment<'a>);
 
 impl<'a> LinkLabelSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     /// A link label can have at most 999 characters inside the square brackets.

@@ -2,21 +2,19 @@ mod parser;
 
 use itertools::PutBackN;
 pub use parser::*;
+use segment::{LineSegment, Segment};
 
-use crate::{
-    internal::{
-        parse::{
-            link::{LinkDestination, LinkLabel, LinkTitle},
-            parser::{Finalize, Ingest, IngestResult},
-        },
-        utils::iter_ext::PutBackChunk,
+use crate::internal::{
+    parse::{
+        link::{LinkDestination, LinkLabel, LinkTitle},
+        parser::{Finalize, Ingest, IngestResult},
     },
-    Segment,
+    utils::iter_ext::PutBackChunk,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkReferenceDefinition<'a> {
-    pub segments: Vec<Segment<'a>>,
+    pub segments: Vec<LineSegment<'a>>,
     pub label: LinkLabel<'a>,
     pub destination: LinkDestination<'a>,
     pub title: Option<LinkTitle<'a>>,
@@ -24,7 +22,7 @@ pub struct LinkReferenceDefinition<'a> {
 
 impl<'a> LinkReferenceDefinition<'a> {
     fn new(
-        segments: Vec<Segment<'a>>,
+        segments: Vec<LineSegment<'a>>,
         label: LinkLabel<'a>,
         destination: LinkDestination<'a>,
         title: Option<LinkTitle<'a>>,
@@ -38,7 +36,7 @@ impl<'a> LinkReferenceDefinition<'a> {
     }
 
     fn without_title(
-        segments: Vec<Segment<'a>>,
+        segments: Vec<LineSegment<'a>>,
         label: LinkLabel<'a>,
         destination: LinkDestination<'a>,
     ) -> LinkReferenceDefinition<'a> {
@@ -46,7 +44,7 @@ impl<'a> LinkReferenceDefinition<'a> {
     }
 
     fn with_title(
-        segments: Vec<Segment<'a>>,
+        segments: Vec<LineSegment<'a>>,
         label: LinkLabel<'a>,
         destination: LinkDestination<'a>,
         title: LinkTitle<'a>,
@@ -55,7 +53,9 @@ impl<'a> LinkReferenceDefinition<'a> {
     }
 
     // TODO: in trait, plus add it on iters.
-    pub fn try_read(segments: &mut PutBackN<impl Iterator<Item = Segment<'a>>>) -> Option<Self> {
+    pub fn try_read(
+        segments: &mut PutBackN<impl Iterator<Item = LineSegment<'a>>>,
+    ) -> Option<Self> {
         let mut parser = LinkReferenceDefinitionParser::new();
         while let Some(segment) = segments.next() {
             match parser.ingest(segment) {

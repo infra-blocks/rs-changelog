@@ -1,14 +1,15 @@
 use crate::block::FencedCode;
+use segment::{LineSegment, SegmentLike};
 
 use super::DisplayHtml;
 
 trait PushContentSegment {
-    fn push_content_segment(&mut self, segment: &crate::Segment);
+    fn push_content_segment(&mut self, segment: &LineSegment);
 }
 
 impl PushContentSegment for String {
     // TODO: add the unindent.
-    fn push_content_segment(&mut self, segment: &crate::Segment) {
+    fn push_content_segment(&mut self, segment: &LineSegment) {
         for char in segment.text().chars() {
             // Escape html chars!
             match char {
@@ -31,8 +32,8 @@ impl<'a> DisplayHtml for FencedCode<'a> {
         _link_reference_definitions: &[crate::block::LinkReferenceDefinition],
     ) {
         buffer.push_str("<pre><code>");
-        for segment in &self.content_segments {
-            buffer.push_content_segment(&segment);
+        for segment in self.content_segments() {
+            buffer.push_content_segment(segment);
         }
         buffer.push_str("</code></pre>");
     }

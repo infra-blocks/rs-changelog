@@ -1,8 +1,8 @@
 //! This module exposes utilities to parse single segments.
 //!
-//! Those utilities come in the form of [TryFrom] implementations that take in a [crate::Segment]
+//! Those utilities come in the form of [TryFrom] implementations that take in a [segment::Segment]
 //! and returns a more informative type. For example, a [BlankLineSegment] can be constructed
-//! using [TryFrom] using a [crate::Segment].
+//! using [TryFrom] using a [segment::Segment].
 //!
 //! These implementations use move semantics and return the invalid segment as an error in the
 //! case where parsing fails.

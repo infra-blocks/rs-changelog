@@ -1,13 +1,11 @@
-use crate::{
-    internal::parse::{
-        parser::{Finalize, Ingest, IngestResult},
-        segment::{
-            BackticksFencedCodeClosingSegment, BackticksFencedCodeOpeningSegment,
-            TildesFencedCodeClosingSegment, TildesFencedCodeOpeningSegment,
-        },
+use crate::internal::parse::{
+    parser::{Finalize, Ingest, IngestResult},
+    segment::{
+        BackticksFencedCodeClosingSegment, BackticksFencedCodeOpeningSegment,
+        TildesFencedCodeClosingSegment, TildesFencedCodeOpeningSegment,
     },
-    Segment,
 };
+use segment::LineSegment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FencedCode<'a> {
@@ -28,7 +26,7 @@ impl<'a> FencedCode<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackticksFencedCode<'a> {
     pub opening_segment: BackticksFencedCodeOpeningSegment<'a>,
-    pub content_segments: Vec<Segment<'a>>,
+    pub content_segments: Vec<LineSegment<'a>>,
     /// The closing segment is allowed to be None in one scenario: when the end of input is reached
     /// before a closing segment. This is allowed by the spec.
     pub closing_segment: Option<BackticksFencedCodeClosingSegment<'a>>,
@@ -37,7 +35,7 @@ pub struct BackticksFencedCode<'a> {
 impl<'a> BackticksFencedCode<'a> {
     fn new(
         opening_segment: BackticksFencedCodeOpeningSegment<'a>,
-        content_segments: Vec<Segment<'a>>,
+        content_segments: Vec<LineSegment<'a>>,
         closing_segment: Option<BackticksFencedCodeClosingSegment<'a>>,
     ) -> Self {
         Self {
@@ -49,7 +47,7 @@ impl<'a> BackticksFencedCode<'a> {
 
     fn with_closing_segment(
         opening_segment: BackticksFencedCodeOpeningSegment<'a>,
-        content_segments: Vec<Segment<'a>>,
+        content_segments: Vec<LineSegment<'a>>,
         closing_segment: BackticksFencedCodeClosingSegment<'a>,
     ) -> Self {
         Self::new(opening_segment, content_segments, Some(closing_segment))
@@ -57,7 +55,7 @@ impl<'a> BackticksFencedCode<'a> {
 
     fn without_closing_segment(
         opening_segment: BackticksFencedCodeOpeningSegment<'a>,
-        content_segments: Vec<Segment<'a>>,
+        content_segments: Vec<LineSegment<'a>>,
     ) -> Self {
         Self::new(opening_segment, content_segments, None)
     }
@@ -66,14 +64,14 @@ impl<'a> BackticksFencedCode<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TildesFencedCode<'a> {
     pub opening_segment: TildesFencedCodeOpeningSegment<'a>,
-    pub content_segments: Vec<Segment<'a>>,
+    pub content_segments: Vec<LineSegment<'a>>,
     pub closing_segment: Option<TildesFencedCodeClosingSegment<'a>>,
 }
 
 impl<'a> TildesFencedCode<'a> {
     fn new(
         opening_segment: TildesFencedCodeOpeningSegment<'a>,
-        content_segments: Vec<Segment<'a>>,
+        content_segments: Vec<LineSegment<'a>>,
         closing_segment: Option<TildesFencedCodeClosingSegment<'a>>,
     ) -> Self {
         Self {
@@ -85,7 +83,7 @@ impl<'a> TildesFencedCode<'a> {
 
     fn with_closing_segment(
         opening_segment: TildesFencedCodeOpeningSegment<'a>,
-        content_segments: Vec<Segment<'a>>,
+        content_segments: Vec<LineSegment<'a>>,
         closing_segment: TildesFencedCodeClosingSegment<'a>,
     ) -> Self {
         Self::new(opening_segment, content_segments, Some(closing_segment))
@@ -93,7 +91,7 @@ impl<'a> TildesFencedCode<'a> {
 
     fn without_closing_segment(
         opening_segment: TildesFencedCodeOpeningSegment<'a>,
-        content_segments: Vec<Segment<'a>>,
+        content_segments: Vec<LineSegment<'a>>,
     ) -> Self {
         Self::new(opening_segment, content_segments, None)
     }
@@ -102,8 +100,8 @@ impl<'a> TildesFencedCode<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FencedCodeParser<'a> {
     Idle,
-    Backticks(BackticksFencedCodeOpeningSegment<'a>, Vec<Segment<'a>>),
-    Tildes(TildesFencedCodeOpeningSegment<'a>, Vec<Segment<'a>>),
+    Backticks(BackticksFencedCodeOpeningSegment<'a>, Vec<LineSegment<'a>>),
+    Tildes(TildesFencedCodeOpeningSegment<'a>, Vec<LineSegment<'a>>),
 }
 
 impl<'a> Default for FencedCodeParser<'a> {
@@ -119,10 +117,10 @@ impl<'a> FencedCodeParser<'a> {
 }
 
 impl<'a> Ingest for FencedCodeParser<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = FencedCode<'a>;
-    type Failure = Segment<'a>;
+    type Failure = LineSegment<'a>;
 
     fn ingest(
         self,

@@ -1,10 +1,8 @@
-use crate::{
-    internal::parse::{
-        parser::{Finalize, Ingest, IngestResult},
-        segment::{BlankLineSegment, IndentedCodeOrBlankLineSegment, IndentedCodeSegment},
-    },
-    Segment,
+use crate::internal::parse::{
+    parser::{Finalize, Ingest, IngestResult},
+    segment::{BlankLineSegment, IndentedCodeOrBlankLineSegment, IndentedCodeSegment},
 };
+use segment::LineSegment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndentedCode<'a> {
@@ -166,11 +164,11 @@ impl<'a> IndentedCodeStripResult<'a> {
 pub(super) struct IngestSuccess<'a> {
     pub result: IndentedCodeStripResult<'a>,
     // Interrupting segment.
-    pub rejected_segment: Segment<'a>,
+    pub rejected_segment: LineSegment<'a>,
 }
 
 impl<'a> IngestSuccess<'a> {
-    fn new(result: IndentedCodeStripResult<'a>, rejected_segment: Segment<'a>) -> Self {
+    fn new(result: IndentedCodeStripResult<'a>, rejected_segment: LineSegment<'a>) -> Self {
         Self {
             result,
             rejected_segment,
@@ -179,10 +177,10 @@ impl<'a> IngestSuccess<'a> {
 }
 
 impl<'a> Ingest for IndentedCodeParser<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = IngestSuccess<'a>;
-    type Failure = Segment<'a>;
+    type Failure = LineSegment<'a>;
 
     fn ingest(self, input: Self::Input) -> IngestResult<Self::Ready, Self::Success, Self::Failure> {
         match self {
@@ -252,21 +250,20 @@ impl<'a> Finalize for IndentedCodeParser<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use segment::SegmentStrExt;
 
     // Tests that it properly strips off trailing blank lines when present.
     mod indented_code_stripping {
-        use crate::StrExt;
-
         use super::*;
 
-        impl<'a> From<Vec<Segment<'a>>> for IndentedCodeStripResult<'a> {
+        impl<'a> From<Vec<LineSegment<'a>>> for IndentedCodeStripResult<'a> {
             /// An implementation to easily generate a result from segments for testing.
             ///
             /// # Panics
             /// - If the segments are empty.
             /// - If the first segment is not an [IndentedCodeSegment].
             /// - If any of the subsequent segment cannot be turned into [IndentedCodeOrBlankLineSegment].
-            fn from(segments: Vec<Segment<'a>>) -> Self {
+            fn from(segments: Vec<LineSegment<'a>>) -> Self {
                 if segments.is_empty() {
                     panic!("Segments cannot be empty.");
                 }
@@ -287,7 +284,7 @@ mod test {
             }
         }
 
-        impl<'a> From<Vec<Segment<'a>>> for IndentedCode<'a> {
+        impl<'a> From<Vec<LineSegment<'a>>> for IndentedCode<'a> {
             /// This implementation is just to generate a value to compare against for tests.
             ///
             /// # Panics
@@ -295,7 +292,7 @@ mod test {
             /// - If the first segment cannot be turned into an [IndentedCodeSegment].
             /// - If the last segment cannot be turned into an [IndentedCodeSegment].
             /// - If any of the segments in between cannot be turned into an [IndentedCodeOrBlankLineSegment].
-            fn from(mut segments: Vec<Segment<'a>>) -> Self {
+            fn from(mut segments: Vec<LineSegment<'a>>) -> Self {
                 if segments.is_empty() {
                     panic!("Segments cannot be empty.");
                 }
@@ -332,9 +329,7 @@ mod test {
 
         #[test]
         fn should_work_with_opening_segment() {
-            let opening_segment = Segment::first("    This is indented code.\n")
-                .try_into()
-                .unwrap();
+            let opening_segment = "    This is indented code.\n".line().try_into().unwrap();
             assert_eq!(
                 IndentedCodeStripResult::from_single_segment(opening_segment),
                 IndentedCodeStripResult::new(
@@ -346,9 +341,7 @@ mod test {
 
         #[test]
         fn should_work_with_multi_segments_but_empty() {
-            let opening_segment = Segment::first("    This is indented code.\n")
-                .try_into()
-                .unwrap();
+            let opening_segment = "    This is indented code.\n".line().try_into().unwrap();
             assert_eq!(
                 IndentedCodeStripResult::from_multi_segments(opening_segment, Vec::new()),
                 IndentedCodeStripResult::new(
@@ -363,7 +356,7 @@ mod test {
             let segments: Vec<_> = r"    This is indented code
     and so is this
     and this"
-                .line_segments()
+                .lines()
                 .collect();
             assert_eq!(
                 IndentedCodeStripResult::from(segments.clone()),
@@ -379,7 +372,7 @@ mod test {
 
 
     Two blank lines above"
-                .line_segments()
+                .lines()
                 .collect();
             assert_eq!(
                 IndentedCodeStripResult::from(segments.clone()),
@@ -395,7 +388,7 @@ mod test {
 
     Big code
 "
-            .line_segments()
+            .lines()
             .collect();
             let mut indented_code_segments = segments.clone();
             let trailing_blank_lines = indented_code_segments
@@ -417,7 +410,7 @@ mod test {
 
 
     "
-            .line_segments()
+            .lines()
             .collect();
             let mut indented_code_segments = segments.clone();
             let trailing_blank_lines = indented_code_segments
@@ -435,12 +428,14 @@ mod test {
     // Test state transitions. We won't be testing every state transition with every type of
     // result stripping here. We just go for the happy path in every state transition.
     mod parser {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         #[test]
         fn idle_to_invalid() {
             let parser = IndentedCodeParser::new();
-            let segment = Segment::default();
+            let segment = LineSegment::default();
             assert_eq!(parser.ingest(segment), IngestResult::Failure(segment));
         }
 
@@ -455,10 +450,10 @@ mod test {
         fn idle_opened_interrupted() {
             let parser = IndentedCodeParser::new();
 
-            let first_segment = Segment::first("    first line\n");
+            let first_segment = "    first line\n".line();
             let parser = parser.ingest(first_segment).unwrap_ready();
 
-            let second_segment = Segment::new(first_segment.end(), "```rust\n");
+            let second_segment = first_segment.next("```rust\n");
             assert_eq!(
                 parser.ingest(second_segment),
                 IngestResult::Success(IngestSuccess::new(
@@ -472,7 +467,7 @@ mod test {
         fn idle_opened_finalize() {
             let parser = IndentedCodeParser::new();
 
-            let first_segment = Segment::first("    first line\n");
+            let first_segment = "    first line\n".line();
             let parser = parser.ingest(first_segment).unwrap_ready();
 
             assert_eq!(
@@ -487,13 +482,13 @@ mod test {
         fn idle_opened_continuing_interrupted() {
             let parser = IndentedCodeParser::new();
 
-            let first_segment = Segment::first("    first line\n");
+            let first_segment = "    first line\n".line();
             let parser = parser.ingest(first_segment).unwrap_ready();
 
-            let second_segment = Segment::new(first_segment.end(), "    second line\n");
+            let second_segment = first_segment.next("    second line\n");
             let parser = parser.ingest(second_segment).unwrap_ready();
 
-            let third_segment = Segment::new(second_segment.end(), "```rust\n");
+            let third_segment = second_segment.next("```rust\n");
             assert_eq!(
                 parser.ingest(third_segment),
                 IngestResult::Success(IngestSuccess::new(
@@ -510,10 +505,10 @@ mod test {
         fn idle_opened_continuing_finalize() {
             let parser = IndentedCodeParser::new();
 
-            let first_segment = Segment::first("    first line\n");
+            let first_segment = "    first line\n".line();
             let parser = parser.ingest(first_segment).unwrap_ready();
 
-            let second_segment = Segment::new(first_segment.end(), "    second line\n");
+            let second_segment = first_segment.next("    second line\n");
             let parser = parser.ingest(second_segment).unwrap_ready();
 
             assert_eq!(

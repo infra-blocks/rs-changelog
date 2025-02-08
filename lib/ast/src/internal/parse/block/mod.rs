@@ -1,7 +1,7 @@
 mod leaf;
 pub use leaf::*;
+use segment::LineSegment;
 
-use crate::Segment;
 use std::convert::Infallible;
 
 use super::parser::{Finalize, Ingest, IngestResult};
@@ -42,7 +42,7 @@ pub(super) enum IngestSuccess<'a> {
 }
 
 impl<'a> Ingest for BlockParser<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = IngestSuccess<'a>;
     type Failure = Infallible;

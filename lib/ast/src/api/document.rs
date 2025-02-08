@@ -1,9 +1,9 @@
-use std::fmt::Formatter;
+use segment::SegmentStrExt;
 
 use crate::{
     block::{Block, Leaf, LinkReferenceDefinition},
     internal::{parse::Blocks, render::DisplayHtml},
-    StrExt, ToHtml,
+    ToHtml,
 };
 
 pub struct Document<'a> {
@@ -24,7 +24,7 @@ impl<'a> Document<'a> {
     }
 
     pub fn parse(input: &'a str) -> Self {
-        let blocks = input.line_segments().blocks();
+        let blocks = input.lines().blocks();
         Self::from(blocks)
     }
 }

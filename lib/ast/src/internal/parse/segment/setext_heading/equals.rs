@@ -1,15 +1,13 @@
 use std::sync::LazyLock;
 
-use crate::Segment;
+use segment::{LineSegment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SetextHeadingEqualsUnderlineSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct SetextHeadingEqualsUnderlineSegment<'a>(pub LineSegment<'a>);
 
 impl<'a> SetextHeadingEqualsUnderlineSegment<'a> {
-    fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+    fn new(segment: LineSegment<'a>) -> Self {
+        Self(segment)
     }
 
     pub fn level(&self) -> u8 {
@@ -18,12 +16,12 @@ impl<'a> SetextHeadingEqualsUnderlineSegment<'a> {
 }
 
 static REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"^[ ]{0,3}=+\s*?\n$").unwrap());
+    LazyLock::new(|| regex::Regex::new(r"^[ ]{0,3}=+\s*?\n?$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for SetextHeadingEqualsUnderlineSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for SetextHeadingEqualsUnderlineSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         if REGEX.is_match(segment.text()) {
             Ok(Self::new(segment))
         } else {
@@ -34,6 +32,8 @@ impl<'a> TryFrom<Segment<'a>> for SetextHeadingEqualsUnderlineSegment<'a> {
 
 #[cfg(test)]
 mod test {
+    use segment::SegmentStrExt;
+
     use super::*;
 
     macro_rules! failure_case {
@@ -60,18 +60,15 @@ mod test {
         };
     }
 
-    failure_case!(should_fail_with_empty, Segment::default());
-    failure_case!(should_fail_with_blank_line, Segment::first("\n"));
-    failure_case!(should_fail_with_4_idents, Segment::first("    =\n"));
-    failure_case!(should_fail_for_missing_eol, Segment::first("="));
-    failure_case!(should_reject_trailing_characters, Segment::first("=a\n"));
-    failure_case!(should_fail_for_hyphens, Segment::first("-\n"));
+    failure_case!(should_fail_with_empty, LineSegment::default());
+    failure_case!(should_fail_with_blank_line, "\n".line());
+    failure_case!(should_fail_with_4_idents, "    =\n".line());
+    failure_case!(should_fail_for_missing_eol, "=".line());
+    failure_case!(should_reject_trailing_characters, "=a\n".line());
+    failure_case!(should_fail_for_hyphens, "-\n".line());
 
-    success_case!(should_work_with_single_equal, Segment::first("=\n"));
-    success_case!(should_work_with_3_equals, Segment::first("===\n"));
-    success_case!(should_work_with_3_idents, Segment::first("   =\n"));
-    success_case!(
-        should_work_with_trailing_whitespace,
-        Segment::first("=  \n")
-    );
+    success_case!(should_work_with_single_equal, "=\n".line());
+    success_case!(should_work_with_3_equals, "===\n".line());
+    success_case!(should_work_with_3_idents, "   =\n".line());
+    success_case!(should_work_with_trailing_whitespace, "=  \n".line());
 }

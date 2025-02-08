@@ -1,11 +1,22 @@
-use crate::Segment;
+use crate::internal::parse;
+use segment::{Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AtxHeading<'a> {
-    /// The whole line segment of the heading.
-    pub segment: Segment<'a>,
-    /// The subsegment containing the title of the heading. Possibly empty.
-    pub title: Option<&'a str>,
-    /// The level of the heading, from 1 to 6 inclusive.
-    pub level: u8,
+pub struct AtxHeading<'a>(pub(crate) parse::block::AtxHeading<'a>);
+
+impl<'a> AtxHeading<'a> {
+    pub fn level(&self) -> u8 {
+        self.0.level()
+    }
+
+    pub fn title(&self) -> Option<&'a str> {
+        self.0.title()
+    }
+
+    pub fn segment(&self) -> Segment<'a> {
+        Segment::new(
+            self.0.segment.segment.start(),
+            self.0.segment.segment.text(),
+        )
+    }
 }

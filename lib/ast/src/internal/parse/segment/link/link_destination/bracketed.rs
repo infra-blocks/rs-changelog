@@ -1,14 +1,10 @@
 use std::sync::LazyLock;
 
-use crate::{
-    internal::parse::try_extract::{Extraction, TryExtract},
-    Segment,
-};
+use crate::internal::parse::try_extract::{Extraction, TryExtract};
+use segment::{Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BracketedLinkDestinationSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct BracketedLinkDestinationSegment<'a>(pub Segment<'a>);
 
 // The bracketed variation is encased in angle brackets and can contain any
 // character except for unescaped angle brackets and new lines. New lines shouldn't
@@ -21,7 +17,7 @@ static BRACKETED_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
 
 impl<'a> BracketedLinkDestinationSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     pub fn is_opening_char(character: char) -> bool {

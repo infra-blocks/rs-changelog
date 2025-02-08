@@ -1,4 +1,4 @@
-use crate::Segment;
+use segment::LineSegment;
 
 use super::{
     block::{self, Block, BlockParser},
@@ -61,7 +61,7 @@ where
 
 impl<'a, I> Iterator for BlocksIterator<'a, I>
 where
-    I: Iterator<Item = Segment<'a>>,
+    I: Iterator<Item = LineSegment<'a>>,
 {
     type Item = crate::block::Block<'a>;
 

@@ -1,12 +1,10 @@
 use std::{convert::Infallible, iter};
 
-use crate::{
-    internal::parse::{
-        parser::{Finalize, Ingest, IngestResult},
-        segment::{ParenthesesLinkTitleContinuationSegment, ParenthesesLinkTitleOpeningSegment},
-    },
-    Segment,
+use crate::internal::parse::{
+    parser::{Finalize, Ingest, IngestResult},
+    segment::{ParenthesesLinkTitleContinuationSegment, ParenthesesLinkTitleOpeningSegment},
 };
+use segment::Segment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParenthesesLinkTitle<'a> {
@@ -78,11 +76,11 @@ impl<'a> Ingest for ParenthesesLinkTitleParser<'a> {
                         }
                     }
                     Err(segment) => {
-                        let mut rejected: Vec<_> = iter::once(opening.segment)
+                        let mut rejected: Vec<_> = iter::once(opening.0)
                             .chain(
                                 continuation_segments
                                     .into_iter()
-                                    .map(|continuation| continuation.segment),
+                                    .map(|continuation| continuation.0),
                             )
                             .collect();
                         rejected.push(segment);
@@ -103,11 +101,11 @@ impl<'a> Finalize for ParenthesesLinkTitleParser<'a> {
         match self {
             Self::Idle => Err(Vec::new()),
             Self::Building(opening, continuation_segments) => {
-                let segments = iter::once(opening.segment)
+                let segments = iter::once(opening.0)
                     .chain(
                         continuation_segments
                             .into_iter()
-                            .map(|continuation| continuation.segment),
+                            .map(|continuation| continuation.0),
                     )
                     .collect();
                 Err(segments)
@@ -119,7 +117,7 @@ impl<'a> Finalize for ParenthesesLinkTitleParser<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::StrExt;
+    use segment::SegmentStrExt;
 
     #[test]
     fn idle_reject_empty() {
@@ -157,7 +155,7 @@ mod test {
     #[test]
     fn idle_building_success() {
         let segments = "(the word\nis the bird)"
-            .line_segments()
+            .lines()
             .collect::<Vec<_>>();
         let parser = ParenthesesLinkTitleParser::new();
         let parser = parser.ingest(segments[0]).unwrap_ready();
@@ -172,7 +170,7 @@ mod test {
 
     #[test]
     fn idle_building_reject() {
-        let segments = "(the word\n\n".line_segments().collect::<Vec<_>>();
+        let segments = "(the word\n\n".lines().collect::<Vec<_>>();
         let parser = ParenthesesLinkTitleParser::new();
         let parser = parser.ingest(segments[0]).unwrap_ready();
         assert_eq!(parser.ingest(segments[1]).unwrap_failure(), segments);

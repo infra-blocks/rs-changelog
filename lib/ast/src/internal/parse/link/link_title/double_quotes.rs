@@ -1,10 +1,8 @@
-use crate::{
-    internal::parse::{
-        parser::{Finalize, Ingest, IngestResult},
-        segment::{DoubleQuotesLinkTitleContinuationSegment, DoubleQuotesLinkTitleOpeningSegment},
-    },
-    Segment,
+use crate::internal::parse::{
+    parser::{Finalize, Ingest, IngestResult},
+    segment::{DoubleQuotesLinkTitleContinuationSegment, DoubleQuotesLinkTitleOpeningSegment},
 };
+use segment::Segment;
 use std::{convert::Infallible, iter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,11 +75,11 @@ impl<'a> Ingest for DoubleQuotesLinkTitleParser<'a> {
                         }
                     }
                     Err(segment) => {
-                        let mut segments = iter::once(opening.segment)
+                        let mut segments = iter::once(opening.0)
                             .chain(
                                 continuation_segments
                                     .into_iter()
-                                    .map(|continuation| continuation.segment),
+                                    .map(|continuation| continuation.0),
                             )
                             .collect::<Vec<_>>();
                         segments.push(segment);
@@ -102,11 +100,11 @@ impl<'a> Finalize for DoubleQuotesLinkTitleParser<'a> {
         match self {
             Self::Idle => Err(Vec::new()),
             Self::Building(opening, continuation_segments) => {
-                let segments = iter::once(opening.segment)
+                let segments = iter::once(opening.0)
                     .chain(
                         continuation_segments
                             .into_iter()
-                            .map(|continuation| continuation.segment),
+                            .map(|continuation| continuation.0),
                     )
                     .collect();
                 Err(segments)
@@ -118,7 +116,7 @@ impl<'a> Finalize for DoubleQuotesLinkTitleParser<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Segment, StrExt};
+    use segment::SegmentStrExt;
 
     #[test]
     fn idle_reject_empty() {
@@ -156,7 +154,7 @@ mod test {
     #[test]
     fn idle_building_success() {
         let segments = "\"the word\nis the bird\""
-            .line_segments()
+            .lines()
             .collect::<Vec<_>>();
         let parser = DoubleQuotesLinkTitleParser::new();
         let parser = parser.ingest(segments[0]).unwrap_ready();
@@ -171,7 +169,7 @@ mod test {
 
     #[test]
     fn idle_building_reject() {
-        let segments = "\"the word\n\n".line_segments().collect::<Vec<_>>();
+        let segments = "\"the word\n\n".lines().collect::<Vec<_>>();
         let parser = DoubleQuotesLinkTitleParser::new();
         let parser = parser.ingest(segments[0]).unwrap_ready();
         assert_eq!(parser.ingest(segments[1]).unwrap_failure(), segments);

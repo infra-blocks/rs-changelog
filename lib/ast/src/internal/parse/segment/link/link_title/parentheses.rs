@@ -1,19 +1,17 @@
 use std::sync::LazyLock;
 
-use crate::{internal::parse::segment::BlankLineSegment, Segment};
+use segment::{Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParenthesesLinkTitleOpeningSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct ParenthesesLinkTitleOpeningSegment<'a>(pub Segment<'a>);
 
 impl<'a> ParenthesesLinkTitleOpeningSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     pub fn is_closing(&self) -> bool {
-        self.segment.text().ends_with(')')
+        self.0.text().ends_with(')')
     }
 }
 
@@ -36,17 +34,15 @@ impl<'a> TryFrom<Segment<'a>> for ParenthesesLinkTitleOpeningSegment<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParenthesesLinkTitleContinuationSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct ParenthesesLinkTitleContinuationSegment<'a>(pub Segment<'a>);
 
 impl<'a> ParenthesesLinkTitleContinuationSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     pub fn is_closing(&self) -> bool {
-        self.segment.text().ends_with(')')
+        self.0.text().ends_with(')')
     }
 }
 
@@ -61,9 +57,7 @@ impl<'a> TryFrom<Segment<'a>> for ParenthesesLinkTitleContinuationSegment<'a> {
     type Error = Segment<'a>;
 
     fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
-        if CONTINUATION_REGEX.is_match(&segment.text())
-            && BlankLineSegment::try_from(segment.clone()).is_err()
-        {
+        if CONTINUATION_REGEX.is_match(&segment.text()) && !segment.is_blank() {
             Ok(Self::new(segment))
         } else {
             Err(segment)
@@ -108,7 +102,7 @@ mod test {
                     fn $test() {
                         let result =
                             ParenthesesLinkTitleOpeningSegment::try_from($segment.clone()).unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), false);
                     }
                 };
@@ -137,7 +131,7 @@ mod test {
                     fn $test() {
                         let result =
                             ParenthesesLinkTitleOpeningSegment::try_from($segment.clone()).unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), true);
                     }
                 };
@@ -189,7 +183,7 @@ mod test {
                         let result =
                             ParenthesesLinkTitleContinuationSegment::try_from($segment.clone())
                                 .unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), false);
                     }
                 };
@@ -219,7 +213,7 @@ mod test {
                         let result =
                             ParenthesesLinkTitleContinuationSegment::try_from($segment.clone())
                                 .unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), true);
                     }
                 };

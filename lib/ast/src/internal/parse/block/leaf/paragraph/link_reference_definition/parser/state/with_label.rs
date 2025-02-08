@@ -1,12 +1,10 @@
 use either::Either;
+use segment::LineSegment;
 
-use crate::{
-    internal::parse::{
-        block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
-        link::LinkLabel,
-        parser::{Finalize, Ingest, IngestResult},
-    },
-    Segment,
+use crate::internal::parse::{
+    block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
+    link::LinkLabel,
+    parser::{Finalize, Ingest, IngestResult},
 };
 
 use super::{
@@ -17,12 +15,12 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WithLabelState<'a> {
     // TODO: since it'S pretty much guaranteed to be only one segment, maybe we can type it as such.
-    pub segments: Vec<Segment<'a>>,
+    pub segments: Vec<LineSegment<'a>>,
     pub label: LinkLabel<'a>,
 }
 
 impl<'a> WithLabelState<'a> {
-    pub fn new(segments: Vec<Segment<'a>>, label: LinkLabel<'a>) -> Self {
+    pub fn new(segments: Vec<LineSegment<'a>>, label: LinkLabel<'a>) -> Self {
         Self { segments, label }
     }
 }
@@ -46,11 +44,11 @@ impl<'a> From<WithLabelAndDestinationParsingTitleState<'a>> for WithLabelNextSta
 
 // TODO: test that failures are this level return 2 segments.
 impl<'a> Ingest for WithLabelState<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     // Upon success, we will transition to one of two possible states.
     type Ready = WithLabelNextState<'a>;
     type Success = LinkReferenceDefinition<'a>;
-    type Failure = Vec<Segment<'a>>;
+    type Failure = Vec<LineSegment<'a>>;
 
     fn ingest(
         self,
@@ -104,7 +102,7 @@ impl<'a> Ingest for WithLabelState<'a> {
 
 impl<'a> Finalize for WithLabelState<'a> {
     // A label is not enough to create a valid link reference definition, so we return the segments.
-    type Result = Vec<Segment<'a>>;
+    type Result = Vec<LineSegment<'a>>;
 
     fn finalize(self) -> Self::Result {
         self.segments

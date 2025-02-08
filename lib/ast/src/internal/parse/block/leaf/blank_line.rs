@@ -1,13 +1,12 @@
-use crate::{internal::parse::segment::BlankLineSegment, Segment};
+use crate::internal::parse::segment::BlankLineSegment;
+use segment::LineSegment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BlankLine<'a> {
-    pub segment: BlankLineSegment<'a>,
-}
+pub struct BlankLine<'a>(pub BlankLineSegment<'a>);
 
 impl<'a> BlankLine<'a> {
     fn new(segment: BlankLineSegment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 }
 
@@ -17,10 +16,10 @@ impl<'a> From<BlankLineSegment<'a>> for BlankLine<'a> {
     }
 }
 
-impl<'a> TryFrom<Segment<'a>> for BlankLine<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for BlankLine<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         Ok(Self::new(segment.try_into()?))
     }
 }

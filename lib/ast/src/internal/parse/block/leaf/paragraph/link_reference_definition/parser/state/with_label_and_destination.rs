@@ -1,26 +1,24 @@
 use either::Either;
+use segment::{LineSegment, Segment};
 
-use crate::{
-    internal::parse::{
-        block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
-        link::{LinkDestination, LinkLabel},
-        parser::{Finalize, Ingest, IngestResult},
-    },
-    Segment,
+use crate::internal::parse::{
+    block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
+    link::{LinkDestination, LinkLabel},
+    parser::{Finalize, Ingest, IngestResult},
 };
 
 use super::{utils::try_parse_title, WithLabelAndDestinationParsingTitleState};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WithLabelAndDestinationState<'a> {
-    pub segments: Vec<Segment<'a>>,
+    pub segments: Vec<LineSegment<'a>>,
     pub link_label: LinkLabel<'a>,
     pub link_destination: LinkDestination<'a>,
 }
 
 impl<'a> WithLabelAndDestinationState<'a> {
     pub fn new(
-        segments: Vec<Segment<'a>>,
+        segments: Vec<LineSegment<'a>>,
         link_label: LinkLabel<'a>,
         link_destination: LinkDestination<'a>,
     ) -> Self {
@@ -33,13 +31,13 @@ impl<'a> WithLabelAndDestinationState<'a> {
 }
 
 impl<'a> Ingest for WithLabelAndDestinationState<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     // If the input is good, we necessarily move to the next state, although we could finalize too.
     type Ready = WithLabelAndDestinationParsingTitleState<'a>;
     type Success = LinkReferenceDefinition<'a>;
     // Because we already have a valid partial result, when there is a failure, we return that result
     // plus the invalid segment.
-    type Failure = (LinkReferenceDefinition<'a>, Segment<'a>);
+    type Failure = (LinkReferenceDefinition<'a>, LineSegment<'a>);
 
     fn ingest(
         self,

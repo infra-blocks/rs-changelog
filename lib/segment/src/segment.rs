@@ -1,10 +1,8 @@
-use std::{
-    iter::FusedIterator,
-    ops::{Range, RangeFrom, RangeTo},
-    str::SplitInclusive,
-};
-
 use location::Position;
+
+use crate::segment_index::SegmentIndex;
+
+use super::SegmentLike;
 
 // TODO: change position for offset if we don't make use of column and row count by
 // the time we finish this module. Positions could be used in the changelog parser instead.
@@ -53,19 +51,14 @@ impl<'a> Segment<'a> {
     /// Constructs a new segment that comes right after this one with the provided text.
     ///
     /// In other words, it uses [Segment::new] with [Segment::end] as the start position.
-    pub fn next(&self, next_text: &'a str) -> Self {
+    pub fn next<'b>(&self, next_text: &'b str) -> Segment<'b> {
         // TODO: tests
-        Self::new(self.end(), next_text)
+        Segment::new(self.end(), next_text)
     }
 
     /// Returns true if the segment text is empty.
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
-    }
-
-    /// Returns the length of the segment text.
-    pub fn len(&self) -> usize {
-        self.text.len()
     }
 
     /// Splits the segment into 2 at the given offset.
@@ -82,19 +75,19 @@ impl<'a> Segment<'a> {
         (left_segment, right_segment)
     }
 
-    // TODO: implement for RangeFrom and RangeTo as well.
+    // TODO: tests
+    /// Slices the current segment at the provided indices.
+    ///
+    /// Unlike the [std::ops::Index] trait, the output isn't a reference to a segment, rather a new segment.
+    ///
+    /// # Panics
+    ///
+    /// If any of the indices are out of bounds.
     pub fn slice<Idx: SegmentIndex>(&self, index: Idx) -> Segment<'a> {
         let start_offset = index.start().unwrap_or(0);
         let end_offset = index.end().unwrap_or(self.len());
         let substr = &self.text[start_offset..end_offset];
         Segment::new(self.at(start_offset), substr)
-    }
-
-    /// Returns the start position of this segment.
-    ///
-    /// This position is inclusive and points to the first character of the segment.
-    pub fn start(&self) -> Position {
-        self.start
     }
 
     /// Returns true if the segment text starts with the provided prefix, false otherwise.
@@ -113,104 +106,19 @@ impl<'a> Segment<'a> {
             return self.slice(trimmed_bytes_count..self.len());
         }
     }
+}
 
-    /// Returns the end position of this segment.
-    ///
-    /// This position is exclusive and points to the character after the last of the segment.
-    /// It is given by [location::Position::across] the text of the segment.
-    pub fn end(&self) -> Position {
+impl<'a> SegmentLike<'a> for Segment<'a> {
+    fn start(&self) -> Position {
+        self.start
+    }
+
+    fn end(&self) -> Position {
         self.start.walk(self.text)
     }
 
-    /// Returns the text of this segment.
-    pub fn text(&self) -> &'a str {
+    fn text(&self) -> &'a str {
         self.text
-    }
-}
-
-// TODO: finish and add the remaining ranges.
-pub trait SegmentIndex {
-    fn start(&self) -> Option<usize>;
-    fn end(&self) -> Option<usize>;
-}
-
-impl SegmentIndex for Range<usize> {
-    fn start(&self) -> Option<usize> {
-        Some(self.start)
-    }
-
-    fn end(&self) -> Option<usize> {
-        Some(self.end)
-    }
-}
-
-impl SegmentIndex for RangeFrom<usize> {
-    fn start(&self) -> Option<usize> {
-        Some(self.start)
-    }
-
-    fn end(&self) -> Option<usize> {
-        None
-    }
-}
-
-impl SegmentIndex for RangeTo<usize> {
-    fn start(&self) -> Option<usize> {
-        None
-    }
-
-    fn end(&self) -> Option<usize> {
-        Some(self.end)
-    }
-}
-
-// TODO: move to internal.
-#[derive(Debug, Clone)]
-pub struct LineSegments<'a> {
-    current: Segment<'a>,
-    inner: SplitInclusive<'a, char>,
-}
-
-impl<'a> LineSegments<'a> {
-    pub fn new(text: &'a str) -> Self {
-        Self {
-            current: Segment::default(),
-            inner: text.split_inclusive('\n'),
-        }
-    }
-}
-
-impl<'a> Iterator for LineSegments<'a> {
-    type Item = Segment<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let text = self.inner.next()?;
-        let segment = self.current.next(text);
-        self.current = segment;
-        Some(segment)
-    }
-}
-
-impl<'a> FusedIterator for LineSegments<'a> {}
-
-impl<'a> From<&'a str> for LineSegments<'a> {
-    fn from(text: &'a str) -> Self {
-        Self::new(text)
-    }
-}
-
-/// Adds the [StrExt::line_segments] method to the [str] type.
-pub trait StrExt<'a> {
-    /// Returns an iterator over the line segments of this text.
-    ///
-    /// The iterator splits inclusively the text at the newline character (`\n`) and
-    /// produces successive segments from the result.
-    fn line_segments(self) -> LineSegments<'a>;
-}
-
-impl<'a> StrExt<'a> for &'a str {
-    fn line_segments(self) -> LineSegments<'a> {
-        self.into()
     }
 }
 
@@ -340,52 +248,6 @@ mod test {
                     location::Position::new(2, 1, 3),
                     "Bitcoin replaces central banking!"
                 )
-            );
-        }
-    }
-
-    mod line_segments {
-        use super::*;
-
-        #[test]
-        fn empty_text_should_produce_no_segments() {
-            let text = "";
-            assert_eq!(text.line_segments().count(), 0);
-        }
-
-        #[test]
-        fn text_without_newline_should_produce_one_segment() {
-            let text = "This is a line segment!";
-            let segments = text.line_segments().collect::<Vec<_>>();
-            assert_eq!(segments, vec![Segment::first(text)]);
-        }
-
-        #[test]
-        fn text_ending_with_newline_should_produce_one_segment() {
-            let text = "This is a line segment!\n";
-            let segments = text.line_segments().collect::<Vec<_>>();
-            assert_eq!(segments, vec![Segment::first(text)]);
-        }
-
-        #[test]
-        fn should_work_with_multiline_text_ending_without_newline() {
-            let text = r"This is the first segment.
-This is the second segment.
-This is the third segment.";
-            let segments = text.line_segments().collect::<Vec<_>>();
-            assert_eq!(
-                segments,
-                vec![
-                    Segment::first("This is the first segment.\n"),
-                    Segment::new(
-                        location::Position::new(2, 1, 27),
-                        "This is the second segment.\n"
-                    ),
-                    Segment::new(
-                        location::Position::new(3, 1, 55),
-                        "This is the third segment."
-                    )
-                ]
             );
         }
     }

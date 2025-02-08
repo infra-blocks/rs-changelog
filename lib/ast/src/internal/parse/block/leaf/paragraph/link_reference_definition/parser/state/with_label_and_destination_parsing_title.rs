@@ -1,15 +1,14 @@
-use crate::{
-    internal::parse::{
-        block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
-        link::{LinkDestination, LinkLabel, LinkTitleParser},
-        parser::{Finalize, Ingest, IngestResult},
-    },
-    Segment,
+use segment::{LineSegment, Segment};
+
+use crate::internal::parse::{
+    block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
+    link::{LinkDestination, LinkLabel, LinkTitleParser},
+    parser::{Finalize, Ingest, IngestResult},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WithLabelAndDestinationParsingTitleState<'a> {
-    pub segments: Vec<Segment<'a>>,
+    pub segments: Vec<LineSegment<'a>>,
     pub link_label: LinkLabel<'a>,
     pub link_destination: LinkDestination<'a>,
     pub link_title_parser: LinkTitleParser<'a>,
@@ -17,7 +16,7 @@ pub struct WithLabelAndDestinationParsingTitleState<'a> {
 
 impl<'a> WithLabelAndDestinationParsingTitleState<'a> {
     pub fn new(
-        segments: Vec<Segment<'a>>,
+        segments: Vec<LineSegment<'a>>,
         link_label: LinkLabel<'a>,
         link_destination: LinkDestination<'a>,
         link_title_parser: LinkTitleParser<'a>,
@@ -32,10 +31,10 @@ impl<'a> WithLabelAndDestinationParsingTitleState<'a> {
 }
 
 impl<'a> Ingest for WithLabelAndDestinationParsingTitleState<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = LinkReferenceDefinition<'a>;
-    type Failure = Vec<Segment<'a>>;
+    type Failure = Vec<LineSegment<'a>>;
 
     fn ingest(
         self,
@@ -68,7 +67,7 @@ impl<'a> Ingest for WithLabelAndDestinationParsingTitleState<'a> {
 
 impl<'a> Finalize for WithLabelAndDestinationParsingTitleState<'a> {
     // Always a failure if the parser hasn't finalized yet.
-    type Result = Vec<Segment<'a>>;
+    type Result = Vec<LineSegment<'a>>;
 
     fn finalize(self) -> Self::Result {
         self.segments
@@ -78,11 +77,13 @@ impl<'a> Finalize for WithLabelAndDestinationParsingTitleState<'a> {
 #[cfg(test)]
 mod test {
 
+    use segment::SegmentStrExt;
+
     use super::*;
 
     #[test]
     fn ingest_ready() {
-        let first_segment = Segment::first("[toto]: www.tata.com 'title start\n");
+        let first_segment = "[toto]: www.tata.com 'title start\n".line();
         let link_label = LinkLabel::new(first_segment.slice(0..6).try_into().unwrap());
         let link_destination = LinkDestination::new(first_segment.slice(8..20).try_into().unwrap());
         let link_title_parser = LinkTitleParser::new()
@@ -110,7 +111,7 @@ mod test {
 
     #[test]
     fn ingest_reject() {
-        let first_segment = Segment::first("[toto]: www.tata.com 'title start\n");
+        let first_segment = "[toto]: www.tata.com 'title start\n".line();
         let link_label = LinkLabel::new(first_segment.slice(0..6).try_into().unwrap());
         let link_destination = LinkDestination::new(first_segment.slice(8..20).try_into().unwrap());
         let link_title_parser = LinkTitleParser::new()
@@ -130,7 +131,7 @@ mod test {
 
     #[test]
     fn ingest_success() {
-        let first_segment = Segment::first("[toto]: www.tata.com 'title start\n");
+        let first_segment = "[toto]: www.tata.com 'title start\n".line();
         let link_label = LinkLabel::new(first_segment.slice(0..6).try_into().unwrap());
         let link_destination = LinkDestination::new(first_segment.slice(8..20).try_into().unwrap());
         let link_title_parser = LinkTitleParser::new()
@@ -142,6 +143,9 @@ mod test {
             link_destination.clone(),
             link_title_parser.clone(),
         );
+        // TODO: It is starting to become apparent that we need to differentiate between the interfaces that expect
+        // whole line segments vs those that expect line subsegments. Having both these types might require also to
+        // produce a trait.
         // TODO: to fix this test, we need to make the link title parser expect the newline, or take it out in the state.
         let next_segment = first_segment.next("    valid segment that should be trimmed!'\n");
         let link_reference_definition = state.ingest(next_segment).unwrap_success();

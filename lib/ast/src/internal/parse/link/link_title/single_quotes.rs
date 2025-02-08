@@ -1,10 +1,8 @@
-use crate::{
-    internal::parse::{
-        parser::{Finalize, Ingest, IngestResult},
-        segment::{SingleQuotesLinkTitleContinuationSegment, SingleQuotesLinkTitleOpeningSegment},
-    },
-    Segment,
+use crate::internal::parse::{
+    parser::{Finalize, Ingest, IngestResult},
+    segment::{SingleQuotesLinkTitleContinuationSegment, SingleQuotesLinkTitleOpeningSegment},
 };
+use segment::Segment;
 use std::{convert::Infallible, iter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,11 +75,11 @@ impl<'a> Ingest for SingleQuotesLinkTitleParser<'a> {
                         }
                     }
                     Err(segment) => {
-                        let mut rejected: Vec<_> = iter::once(opening.segment)
+                        let mut rejected: Vec<_> = iter::once(opening.0)
                             .chain(
                                 continuation_segments
                                     .into_iter()
-                                    .map(|continuation| continuation.segment),
+                                    .map(|continuation| continuation.0),
                             )
                             .collect();
                         rejected.push(segment);
@@ -102,11 +100,11 @@ impl<'a> Finalize for SingleQuotesLinkTitleParser<'a> {
         match self {
             Self::Idle => Err(Vec::new()),
             Self::Building(opening, continuation_segments) => {
-                let segments = iter::once(opening.segment)
+                let segments = iter::once(opening.0)
                     .chain(
                         continuation_segments
                             .into_iter()
-                            .map(|continuation| continuation.segment),
+                            .map(|continuation| continuation.0),
                     )
                     .collect();
                 Err(segments)
@@ -117,7 +115,7 @@ impl<'a> Finalize for SingleQuotesLinkTitleParser<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::StrExt;
+    use segment::SegmentStrExt;
 
     use super::*;
 
@@ -157,7 +155,7 @@ mod test {
     #[test]
     fn idle_building_success() {
         let segments = "'the word\nis the bird'"
-            .line_segments()
+            .lines()
             .collect::<Vec<_>>();
         let parser = SingleQuotesLinkTitleParser::new();
         let parser = parser.ingest(segments[0]).unwrap_ready();
@@ -172,7 +170,7 @@ mod test {
 
     #[test]
     fn idle_building_reject() {
-        let segments = "'the word\n\n".line_segments().collect::<Vec<_>>();
+        let segments = "'the word\n\n".lines().collect::<Vec<_>>();
         let parser = SingleQuotesLinkTitleParser::new();
         let parser = parser.ingest(segments[0]).unwrap_ready();
         assert_eq!(parser.ingest(segments[1]).unwrap_failure(), segments);

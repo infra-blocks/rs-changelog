@@ -1,0 +1,12 @@
+[package]
+name = "segment"
+description = """
+This package exposes segment utilities, which act as a form of slice that remembers its offset in the original text"""
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+location = { path = "../location" }
+
+[lints]
+workspace = true

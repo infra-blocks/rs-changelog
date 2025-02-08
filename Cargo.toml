@@ -20,9 +20,11 @@ members = [
     "lib/ast",
     "lib/clast",
     "lib/date",
+    "lib/line",
     "lib/location",
     "lib/maybe_display",
     "lib/mdast",
+    "lib/segment",
     "lib/test_utils",
     "lib/stack",
 ]

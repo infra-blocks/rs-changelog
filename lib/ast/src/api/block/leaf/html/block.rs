@@ -1,4 +1,4 @@
-use crate::Segment;
+use segment::Segment;
 
 pub struct Html<'a> {
     pub segments: Vec<Segment<'a>>,

@@ -92,6 +92,7 @@ dependencies = [
  "itertools",
  "location",
  "regex",
+ "segment",
 ]
 
 [[package]]
@@ -276,6 +277,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
+name = "line"
+version = "0.0.0"
+
+[[package]]
 name = "location"
 version = "0.0.0"
 
@@ -375,6 +380,13 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
+
+[[package]]
+name = "segment"
+version = "0.0.0"
+dependencies = [
+ "location",
+]
 
 [[package]]
 name = "semver"

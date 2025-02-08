@@ -1,19 +1,17 @@
 use std::sync::LazyLock;
 
-use crate::{internal::parse::segment::BlankLineSegment, Segment};
+use segment::{Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SingleQuotesLinkTitleOpeningSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct SingleQuotesLinkTitleOpeningSegment<'a>(pub Segment<'a>);
 
 impl<'a> SingleQuotesLinkTitleOpeningSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     pub fn is_closing(&self) -> bool {
-        self.segment.text().ends_with('\'')
+        self.0.text().ends_with('\'')
     }
 }
 
@@ -36,17 +34,15 @@ impl<'a> TryFrom<Segment<'a>> for SingleQuotesLinkTitleOpeningSegment<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SingleQuotesLinkTitleContinuationSegment<'a> {
-    pub segment: Segment<'a>,
-}
+pub struct SingleQuotesLinkTitleContinuationSegment<'a>(pub Segment<'a>);
 
 impl<'a> SingleQuotesLinkTitleContinuationSegment<'a> {
     fn new(segment: Segment<'a>) -> Self {
-        Self { segment }
+        Self(segment)
     }
 
     pub fn is_closing(&self) -> bool {
-        self.segment.text().ends_with('\'')
+        self.0.text().ends_with('\'')
     }
 }
 
@@ -75,8 +71,9 @@ impl<'a> TryFrom<Segment<'a>> for SingleQuotesLinkTitleContinuationSegment<'a> {
     type Error = Segment<'a>;
 
     fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
-        if SINGLE_QUOTE_CONTINUATION_REGEX.is_match(&segment.text())
-            && BlankLineSegment::try_from(segment.clone()).is_err()
+        if SINGLE_QUOTE_CONTINUATION_REGEX.is_match(segment.text())
+        // TODO: is blank line utility.
+            && segment.text().trim().len() > 0
         {
             Ok(Self::new(segment))
         } else {
@@ -126,7 +123,7 @@ mod test {
                         let result =
                             SingleQuotesLinkTitleOpeningSegment::try_from($segment.clone())
                                 .unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), false);
                     }
                 };
@@ -156,7 +153,7 @@ mod test {
                         let result =
                             SingleQuotesLinkTitleOpeningSegment::try_from($segment.clone())
                                 .unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), true);
                     }
                 };
@@ -208,7 +205,7 @@ mod test {
                         let result =
                             SingleQuotesLinkTitleContinuationSegment::try_from($segment.clone())
                                 .unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), false);
                     }
                 };
@@ -234,7 +231,7 @@ mod test {
                         let result =
                             SingleQuotesLinkTitleContinuationSegment::try_from($segment.clone())
                                 .unwrap();
-                        assert_eq!(result.segment, $segment);
+                        assert_eq!(result.0, $segment);
                         assert_eq!(result.is_closing(), true);
                     }
                 };

@@ -1,10 +1,9 @@
-use crate::{
-    internal::parse::{
-        segment::LinkLabelSegment,
-        try_extract::{Extraction, TryExtract},
-    },
-    Segment,
+use crate::internal::parse::{
+    segment::LinkLabelSegment,
+    try_extract::{Extraction, TryExtract},
 };
+
+use segment::Segment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkLabel<'a> {

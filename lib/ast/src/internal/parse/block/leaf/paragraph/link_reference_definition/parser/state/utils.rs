@@ -1,12 +1,10 @@
 use either::Either;
+use segment::{LineSegment, Segment, SegmentLike};
 
-use crate::{
-    internal::parse::{
-        link::{LinkDestination, LinkLabel, LinkTitle, LinkTitleParser},
-        parser::{Ingest, IngestResult},
-        try_extract::{Extraction, TryExtract},
-    },
-    Segment,
+use crate::internal::parse::{
+    link::{LinkDestination, LinkLabel, LinkTitle, LinkTitleParser},
+    parser::{Ingest, IngestResult},
+    try_extract::{Extraction, TryExtract},
 };
 
 /// Extracts the link label from the would be link reference definition segment.
@@ -16,7 +14,9 @@ use crate::{
 /// in the remaining string is a colon (':'). Then, it will remove all following whitespace
 /// until a non-whitespace character is found. If none are found, the remaining segment will
 /// be empty.
-pub fn try_extract_label(segment: Segment) -> Result<Extraction<LinkLabel, Segment>, Segment> {
+pub fn try_extract_label(
+    segment: LineSegment,
+) -> Result<Extraction<LinkLabel, Segment>, LineSegment> {
     let mut start_offset = 0;
     let mut char_indices = segment.text().char_indices().take(3);
     while let Some(char_index) = char_indices.next() {

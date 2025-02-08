@@ -1,4 +1,4 @@
-use crate::Segment;
+use segment::Segment;
 
 /// This enum identifies the possible kinds of link titles.
 ///

@@ -1,16 +1,14 @@
-use crate::{
-    internal::parse::segment::{ParagraphSegments, SetextHeadingUnderlineSegment},
-    Segment,
-};
+use crate::internal::parse::segment::{ParagraphSegments, SetextHeadingUnderlineSegment};
+use segment::LineSegment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParagraphSegmentsAndNext<'a> {
     pub paragraph_segments: ParagraphSegments<'a>,
-    pub next_segment: Segment<'a>,
+    pub next_segment: LineSegment<'a>,
 }
 
 impl<'a> ParagraphSegmentsAndNext<'a> {
-    pub fn new(paragraph_segments: ParagraphSegments<'a>, next_segment: Segment<'a>) -> Self {
+    pub fn new(paragraph_segments: ParagraphSegments<'a>, next_segment: LineSegment<'a>) -> Self {
         Self {
             paragraph_segments,
             next_segment,
@@ -59,7 +57,7 @@ mod test {
 
     mod try_from {
         use crate::internal::parse::try_extract::TryExtract;
-        use crate::StrExt;
+        use segment::{Segment, SegmentStrExt};
 
         use super::*;
 
@@ -107,53 +105,45 @@ mod test {
 
         failure_case!(
             should_reject_an_empty_segment,
-            "aaa\n".line_segments(),
-            Segment::empty_at(location::Position::new(5, 2, 4))
+            "aaa\n".lines(),
+            LineSegment::new(Segment::empty_at(location::Position::new(5, 2, 4)))
         );
         failure_case!(
             should_reject_a_whitespace_segment,
-            "aaa\n".line_segments(),
-            Segment::new(location::Position::new(5, 2, 4), " \n")
+            "aaa\n".lines(),
+            LineSegment::new(Segment::new(location::Position::new(5, 2, 4), " \n"))
         );
         failure_case!(
             should_reject_an_underline_segment_with_other_characters,
-            "aaa\n".line_segments(),
-            Segment::new(location::Position::new(5, 2, 4), "===a\n")
+            "aaa\n".lines(),
+            LineSegment::new(Segment::new(location::Position::new(5, 2, 4), "===a\n"))
         );
 
-        success_case!(
-            should_work_with_equals_underline,
-            "aaa\n===\n".line_segments(),
-            1
-        );
-        success_case!(
-            should_work_with_hyphens_underline,
-            "aaa\n---\n".line_segments(),
-            2
-        );
+        success_case!(should_work_with_equals_underline, "aaa\n===\n".lines(), 1);
+        success_case!(should_work_with_hyphens_underline, "aaa\n---\n".lines(), 2);
         success_case!(
             should_work_with_a_single_character_underline,
-            "aaa\n=\n".line_segments(),
+            "aaa\n=\n".lines(),
             1
         );
         success_case!(
             should_work_with_many_characters_underline,
-            "aaa\n============\n".line_segments(),
+            "aaa\n============\n".lines(),
             1
         );
         success_case!(
             should_work_with_3_spaces_before_the_underline,
-            "aaa\n   ===\n".line_segments(),
+            "aaa\n   ===\n".lines(),
             1
         );
         success_case!(
             should_work_with_trailing_whitespaces_underline,
-            "aaa\n===  \n".line_segments(),
+            "aaa\n===  \n".lines(),
             1
         );
         success_case!(
             should_work_with_multiline_paragraph,
-            "aaa\n         hello this is a continuation line\n===\n".line_segments(),
+            "aaa\n         hello this is a continuation line\n===\n".lines(),
             1
         );
     }

@@ -1,5 +1,6 @@
+use segment::SegmentLike;
+
 use crate::block::IndentedCode;
-use crate::internal::utils::segment_ext::SegmentExt;
 
 use super::DisplayHtml;
 
@@ -8,7 +9,7 @@ trait PushUnindentedStr {
 }
 
 impl PushUnindentedStr for String {
-    // Unindents the given text by 4 spaces.
+    // Unindents the given text by up to 4 spaces.
     // Note: although the spec mentions that tabs are equivalent to 4 spaces of indent,
     // the example [here](https://spec.commonmark.org/0.31.2/#example-2) shows that
     // it is treated as *up to* 4 spaces and not literally 4 spaces as far as indented code goes.
@@ -32,16 +33,16 @@ impl PushUnindentedStr for String {
     }
 }
 
-// TODO: remove 4 indents on every line.
 // TODO: Trailing blank lines are not included.
 impl<'a> DisplayHtml for IndentedCode<'a> {
     fn display_html(&self, buffer: &mut String, _: &[super::LinkReferenceDefinition]) {
         buffer.push_str("<pre><code>");
         // There should be at least one segment in the block, otherwise, it was improperly constructed.
-        let first_segment = self.segments.first().unwrap();
+        let mut line_segments = self.line_segments();
+        let first_segment = line_segments.next().unwrap();
         // The first segment should never be blank.
         buffer.push_unindented_str(first_segment.text());
-        for segment in self.segments.iter().skip(1) {
+        for segment in line_segments {
             buffer.push_unindented_str(segment.text());
         }
         buffer.push_str("</code></pre>");

@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::Segment;
+use segment::{LineSegment, SegmentLike};
 
 use super::BlankLineSegment;
 
@@ -9,28 +9,34 @@ use super::BlankLineSegment;
 /// An indented code segment is one that starts with 4 spaces or a tab and
 /// isn't a blank line segment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct IndentedCodeSegment<'a>(pub Segment<'a>);
+pub struct IndentedCodeSegment<'a>(pub LineSegment<'a>);
 
 impl<'a> IndentedCodeSegment<'a> {
-    fn new(segment: Segment<'a>) -> Self {
+    fn new(segment: LineSegment<'a>) -> Self {
         Self(segment)
     }
 }
 
-impl<'a> From<IndentedCodeSegment<'a>> for Segment<'a> {
+impl<'a> From<IndentedCodeSegment<'a>> for LineSegment<'a> {
     fn from(segment: IndentedCodeSegment<'a>) -> Self {
+        segment.0
+    }
+}
+
+impl<'a> From<&IndentedCodeSegment<'a>> for LineSegment<'a> {
+    fn from(segment: &IndentedCodeSegment<'a>) -> Self {
         segment.0
     }
 }
 
 // Every line needs to start with at least 4 spaces.
 static REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"^(?:(?:[ ]{4})|(?:\t))(?:\s*\S.*\n?)$").unwrap());
+    LazyLock::new(|| regex::Regex::new(r"^(?:(?:[ ]{4})|(?:\t))(?:\s*\S.*)$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for IndentedCodeSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for IndentedCodeSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         if REGEX.is_match(segment.text()) {
             Ok(Self::new(segment))
         } else {
@@ -46,7 +52,7 @@ impl<'a> TryFrom<Segment<'a>> for IndentedCodeSegment<'a> {
 ///
 /// # Note
 /// Only non trailing blank lines should be kept in the block.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IndentedCodeOrBlankLineSegment<'a> {
     IndentedCode(IndentedCodeSegment<'a>),
     BlankLine(BlankLineSegment<'a>),
@@ -64,10 +70,10 @@ impl<'a> From<BlankLineSegment<'a>> for IndentedCodeOrBlankLineSegment<'a> {
     }
 }
 
-impl<'a> TryFrom<Segment<'a>> for IndentedCodeOrBlankLineSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for IndentedCodeOrBlankLineSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         if let Ok(segment) = IndentedCodeSegment::try_from(segment) {
             Ok(IndentedCodeOrBlankLineSegment::IndentedCode(segment))
         } else if let Ok(segment) = BlankLineSegment::try_from(segment) {
@@ -78,7 +84,7 @@ impl<'a> TryFrom<Segment<'a>> for IndentedCodeOrBlankLineSegment<'a> {
     }
 }
 
-impl<'a> From<IndentedCodeOrBlankLineSegment<'a>> for Segment<'a> {
+impl<'a> From<IndentedCodeOrBlankLineSegment<'a>> for LineSegment<'a> {
     fn from(value: IndentedCodeOrBlankLineSegment<'a>) -> Self {
         match value {
             IndentedCodeOrBlankLineSegment::IndentedCode(segment) => segment.into(),
@@ -87,11 +93,19 @@ impl<'a> From<IndentedCodeOrBlankLineSegment<'a>> for Segment<'a> {
     }
 }
 
+impl<'a> From<&IndentedCodeOrBlankLineSegment<'a>> for LineSegment<'a> {
+    fn from(value: &IndentedCodeOrBlankLineSegment<'a>) -> Self {
+        (*value).into()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     mod indented_code_segment {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -118,42 +132,44 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empty_segment, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first(" \n"));
+        failure_case!(should_reject_empty_segment, LineSegment::default());
+        failure_case!(should_reject_blank_line, " \n".line());
         failure_case!(
             should_reject_3_whitespaces_indent,
-            Segment::first("   Missing one space\n")
+            "   Missing one space\n".line()
         );
 
         success_case!(
             should_work_with_4_whitespaces_indent,
-            Segment::first("    This is indented code. Finally.\n")
+            "    This is indented code. Finally.\n".line()
         );
         success_case!(
             should_work_with_tab_indent,
-            Segment::first("\tThis is indented code. Finally.\n")
+            "\tThis is indented code. Finally.\n".line()
         );
         success_case!(
             should_work_with_missing_eol,
-            Segment::first("    This is indented code. Finally.")
+            "    This is indented code. Finally.".line()
         );
     }
 
     // Test that it can accept an indented code or a blank line.
     mod indented_code_or_blank_line_segment {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         #[test]
         fn should_reject_empty_segment() {
             assert_eq!(
-                IndentedCodeOrBlankLineSegment::try_from(Segment::default()),
-                Err(Segment::default())
+                IndentedCodeOrBlankLineSegment::try_from(LineSegment::default()),
+                Err(LineSegment::default())
             )
         }
 
         #[test]
         fn should_work_with_single_char_blank_line() {
-            let segment = Segment::first(" \n");
+            let segment = " \n".line();
             assert_eq!(
                 IndentedCodeOrBlankLineSegment::try_from(segment),
                 Ok(IndentedCodeOrBlankLineSegment::BlankLine(
@@ -164,7 +180,7 @@ mod test {
 
         #[test]
         fn should_work_with_indented_code() {
-            let segment = Segment::first("    This is indented code.\n");
+            let segment = "    This is indented code.\n".line();
             assert_eq!(
                 IndentedCodeOrBlankLineSegment::try_from(segment),
                 Ok(IndentedCodeOrBlankLineSegment::IndentedCode(

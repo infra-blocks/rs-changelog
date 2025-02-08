@@ -1,10 +1,8 @@
-use crate::{
-    internal::parse::{
-        segment::{LinkDestinationSegment, LooseLinkDestinationSegment},
-        try_extract::{Extraction, TryExtract},
-    },
-    Segment,
+use crate::internal::parse::{
+    segment::LinkDestinationSegment,
+    try_extract::{Extraction, TryExtract},
 };
+use segment::Segment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkDestination<'a> {

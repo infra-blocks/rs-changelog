@@ -1,10 +1,10 @@
 use std::sync::LazyLock;
 
-use crate::Segment;
+use segment::{LineSegment, Segment, SegmentLike};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackticksFencedCodeOpeningSegment<'a> {
-    pub segment: Segment<'a>,
+    pub segment: LineSegment<'a>,
     pub indent: usize,
     // The amount of backticks used, minimally 3.
     pub fence_length: usize,
@@ -14,7 +14,7 @@ pub struct BackticksFencedCodeOpeningSegment<'a> {
 
 impl<'a> BackticksFencedCodeOpeningSegment<'a> {
     fn new(
-        segment: Segment<'a>,
+        segment: LineSegment<'a>,
         indent: usize,
         fence_length: usize,
         info_string: Option<Segment<'a>>,
@@ -28,14 +28,15 @@ impl<'a> BackticksFencedCodeOpeningSegment<'a> {
     }
 }
 
+// TODO: test that it fails with newline? WTF
 /// Info string cannot contain backtick characters.
 static BACKTICK_OPENING_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^([ ]{0,3})(`{3,})\s*([^`]+?)?\s*$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for BackticksFencedCodeOpeningSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for BackticksFencedCodeOpeningSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         let captures = BACKTICK_OPENING_REGEX
             .captures(segment.text())
             .ok_or(segment)?;
@@ -60,13 +61,13 @@ impl<'a> TryFrom<Segment<'a>> for BackticksFencedCodeOpeningSegment<'a> {
 // Closing segments don't have info strings.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackticksFencedCodeClosingSegment<'a> {
-    pub segment: Segment<'a>,
+    pub segment: LineSegment<'a>,
     pub indent: usize,
     pub fence_length: usize,
 }
 
 impl<'a> BackticksFencedCodeClosingSegment<'a> {
-    fn new(segment: Segment<'a>, indent: usize, fence_length: usize) -> Self {
+    fn new(segment: LineSegment<'a>, indent: usize, fence_length: usize) -> Self {
         Self {
             segment,
             indent,
@@ -79,10 +80,10 @@ impl<'a> BackticksFencedCodeClosingSegment<'a> {
 static BACKTICK_CLOSING_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^([ ]{0,3})(`{3,})\s*$").unwrap());
 
-impl<'a> TryFrom<Segment<'a>> for BackticksFencedCodeClosingSegment<'a> {
-    type Error = Segment<'a>;
+impl<'a> TryFrom<LineSegment<'a>> for BackticksFencedCodeClosingSegment<'a> {
+    type Error = LineSegment<'a>;
 
-    fn try_from(segment: Segment<'a>) -> Result<Self, Self::Error> {
+    fn try_from(segment: LineSegment<'a>) -> Result<Self, Self::Error> {
         let captures = BACKTICK_CLOSING_REGEX
             .captures(segment.text())
             .ok_or(segment)?;
@@ -100,6 +101,8 @@ mod test {
     use super::*;
 
     mod opening {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -126,34 +129,34 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empy, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(should_reject_2_backticks, Segment::first("``\n"));
+        failure_case!(should_reject_empy, LineSegment::default());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_2_backticks, "``\n".line());
         failure_case!(
             should_reject_backticks_in_info_string,
-            Segment::first("```rust`\n")
+            "```rust`\n".line()
         );
         failure_case!(
             should_reject_4_whitespace_indent,
-            Segment::first("    ```\n")
+            "    ```\n".line()
         );
-        failure_case!(should_reject_tab_indent, Segment::first("\t```\n"));
+        failure_case!(should_reject_tab_indent, "\t```\n".line());
 
         success_case!(
             should_work_with_3_backticks,
-            Segment::first("```\n"),
-            BackticksFencedCodeOpeningSegment::new(Segment::first("```\n"), 0, 3, None)
+            "```\n".line(),
+            BackticksFencedCodeOpeningSegment::new("```\n".line(), 0, 3, None)
         );
         success_case!(
             should_work_with_3_backticks_and_3_whitespace_ident,
-            Segment::first("   ```\n"),
-            BackticksFencedCodeOpeningSegment::new(Segment::first("   ```\n"), 3, 3, None)
+            "   ```\n".line(),
+            BackticksFencedCodeOpeningSegment::new("   ```\n".line(), 3, 3, None)
         );
         success_case!(
             should_work_with_info_string,
-            Segment::first("```rust\n"),
+            "```rust\n".line(),
             BackticksFencedCodeOpeningSegment::new(
-                Segment::first("```rust\n"),
+                "```rust\n".line(),
                 0,
                 3,
                 Some(Segment::new(location::Position::new(1, 4, 3), "rust"))
@@ -161,9 +164,9 @@ mod test {
         );
         success_case!(
             should_work_with_padded_info_string,
-            Segment::first("```   rust is kind of fucking cool   \n"),
+            "```   rust is kind of fucking cool   \n".line(),
             BackticksFencedCodeOpeningSegment::new(
-                Segment::first("```   rust is kind of fucking cool   \n"),
+                "```   rust is kind of fucking cool   \n".line(),
                 0,
                 3,
                 Some(Segment::new(
@@ -175,6 +178,8 @@ mod test {
     }
 
     mod closing {
+        use segment::SegmentStrExt;
+
         use super::*;
 
         macro_rules! failure_case {
@@ -201,35 +206,35 @@ mod test {
             };
         }
 
-        failure_case!(should_reject_empy, Segment::default());
-        failure_case!(should_reject_blank_line, Segment::first("\n"));
-        failure_case!(should_reject_2_backticks, Segment::first("``\n"));
-        failure_case!(should_reject_info_string, Segment::first("```rust\n"));
+        failure_case!(should_reject_empy, LineSegment::default());
+        failure_case!(should_reject_blank_line, "\n".line());
+        failure_case!(should_reject_2_backticks, "``\n".line());
+        failure_case!(should_reject_info_string, "```rust\n".line());
         failure_case!(
             should_reject_4_whitespace_indent,
-            Segment::first("    ```\n")
+            "    ```\n".line()
         );
-        failure_case!(should_reject_tab_indent, Segment::first("\t```\n"));
+        failure_case!(should_reject_tab_indent, "\t```\n".line());
 
         success_case!(
             should_work_with_3_backticks,
-            Segment::first("```\n"),
-            BackticksFencedCodeClosingSegment::new(Segment::first("```\n"), 0, 3)
+            "```\n".line(),
+            BackticksFencedCodeClosingSegment::new("```\n".line(), 0, 3)
         );
         success_case!(
             should_work_with_4_backticks,
-            Segment::first("````\n"),
-            BackticksFencedCodeClosingSegment::new(Segment::first("````\n"), 0, 4)
+            "````\n".line(),
+            BackticksFencedCodeClosingSegment::new("````\n".line(), 0, 4)
         );
         success_case!(
             should_work_with_trailing_whitespaces,
-            Segment::first("```   \t\n"),
-            BackticksFencedCodeClosingSegment::new(Segment::first("```   \t\n"), 0, 3)
+            "```   \t\n".line(),
+            BackticksFencedCodeClosingSegment::new("```   \t\n".line(), 0, 3)
         );
         success_case!(
             should_work_with_3_whitespaces_indent,
-            Segment::first("   ```\n"),
-            BackticksFencedCodeClosingSegment::new(Segment::first("   ```\n"), 3, 3)
+            "   ```\n".line(),
+            BackticksFencedCodeClosingSegment::new("   ```\n".line(), 3, 3)
         );
     }
 }

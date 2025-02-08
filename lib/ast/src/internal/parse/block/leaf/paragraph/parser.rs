@@ -1,11 +1,13 @@
 use std::iter::once;
 
+use segment::LineSegment;
+
 use crate::{
     internal::parse::{
         parser::{Finalize, Ingest, IngestResult},
         segment::{ParagraphContinuationSegment, ParagraphOpeningSegment, ParagraphSegments},
     },
-    IntoSegments, Segment,
+    IntoLineSegments,
 };
 
 use super::{ParagraphResult, SetextHeading};
@@ -47,10 +49,10 @@ impl<'a> From<ParagraphResult<'a>> for ParagraphParserResult<'a> {
 
 // At any point after the opening segment, a setext heading can be made.
 impl<'a> Ingest for ParagraphParser<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = Self;
     type Success = ParagraphParserResult<'a>;
-    type Failure = Vec<Segment<'a>>;
+    type Failure = Vec<LineSegment<'a>>;
 
     fn ingest(
         self,
@@ -72,7 +74,7 @@ impl<'a> Ingest for ParagraphParser<'a> {
                     }
                     Err(segment) => IngestResult::Failure(
                         paragraph_segments
-                            .into_segments()
+                            .into_line_segments()
                             .chain(once(segment))
                             .collect(),
                     ),

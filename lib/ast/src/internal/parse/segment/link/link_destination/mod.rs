@@ -4,10 +4,8 @@ mod loose;
 pub use bracketed::*;
 pub use loose::*;
 
-use crate::{
-    internal::parse::try_extract::{Extraction, TryExtract},
-    Segment,
-};
+use crate::internal::parse::try_extract::{Extraction, TryExtract};
+use segment::Segment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LinkDestinationSegment<'a> {

@@ -2,7 +2,7 @@ use itertools::put_back_n;
 
 use crate::{
     internal::parse::segment::{ParagraphContinuationSegment, ParagraphSegments},
-    IntoSegments,
+    IntoLineSegments,
 };
 
 use super::link_reference_definition::LinkReferenceDefinition;
@@ -39,7 +39,7 @@ impl<'a> ParagraphResult<'a> {
 impl<'a> From<ParagraphSegments<'a>> for ParagraphResult<'a> {
     fn from(value: ParagraphSegments<'a>) -> Self {
         let mut link_reference_definitions = Vec::new();
-        let mut segments = put_back_n(value.into_segments());
+        let mut segments = put_back_n(value.into_line_segments());
         while let Some(link_reference_definition) = LinkReferenceDefinition::try_read(&mut segments)
         {
             link_reference_definitions.push(link_reference_definition);

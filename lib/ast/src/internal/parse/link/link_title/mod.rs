@@ -7,14 +7,12 @@ use std::convert::Infallible;
 // TODO: don't expose inner parsers.
 pub use double_quotes::*;
 pub use parentheses::*;
+use segment::Segment;
 pub use single_quotes::*;
 
-use crate::{
-    internal::{
-        parse::parser::{Finalize, Ingest, IngestResult},
-        utils::unwrap_singleton::UnwrapSingleton,
-    },
-    Segment,
+use crate::internal::{
+    parse::parser::{Finalize, Ingest, IngestResult},
+    utils::unwrap_singleton::UnwrapSingleton,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,12 +143,9 @@ impl<'a> Finalize for LinkTitleParser<'a> {
 mod test {
     use super::*;
 
-    use crate::{
-        internal::parse::segment::{
-            DoubleQuotesLinkTitleOpeningSegment, ParenthesesLinkTitleOpeningSegment,
-            SingleQuotesLinkTitleOpeningSegment,
-        },
-        Segment,
+    use crate::internal::parse::segment::{
+        DoubleQuotesLinkTitleOpeningSegment, ParenthesesLinkTitleOpeningSegment,
+        SingleQuotesLinkTitleOpeningSegment,
     };
 
     #[test]

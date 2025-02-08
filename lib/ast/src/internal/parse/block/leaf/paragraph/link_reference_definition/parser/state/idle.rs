@@ -1,12 +1,10 @@
 use either::Either;
 
-use crate::{
-    internal::parse::{
-        block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
-        parser::{Finalize, Ingest, IngestResult},
-    },
-    Segment,
+use crate::internal::parse::{
+    block::leaf::paragraph::link_reference_definition::LinkReferenceDefinition,
+    parser::{Finalize, Ingest, IngestResult},
 };
+use segment::{LineSegment, Segment};
 
 use super::{
     utils::{try_extract_destination, try_extract_label, try_parse_title},
@@ -51,10 +49,10 @@ impl<'a> From<WithLabelAndDestinationParsingTitleState<'a>> for IdleNextState<'a
 }
 
 impl<'a> Ingest for IdleState<'a> {
-    type Input = Segment<'a>;
+    type Input = LineSegment<'a>;
     type Ready = IdleNextState<'a>;
     type Success = LinkReferenceDefinition<'a>;
-    type Failure = Vec<Segment<'a>>;
+    type Failure = Vec<LineSegment<'a>>;
 
     fn ingest(
         self,
