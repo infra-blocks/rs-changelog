@@ -4,7 +4,7 @@ run = "cargo build"
 
 [tasks.ci]
 description = "Runs the CI jobs."
-run = [{ task = "build" }, { tasks = ["lint", "test"] }]
+run = [{ task = "build" }, { tasks = ["lint", "test:coverage:lcov"] }]
 
 [tasks.lint]
 description = "Lints the project."
@@ -14,9 +14,13 @@ run = "cargo fmt -- --check && cargo clippy --all-targets --all-features -- -D w
 description = "Runs the project's tests."
 run = "cargo test"
 
+[tasks."test:coverage"]
+description = "Runs the project's tests and displays code coverage."
+run = "cargo llvm-cov"
+
 [tasks."test:coverage:lcov"]
 description = "Runs the project's tests and aggregates code coverage in lcov format."
-run = "cargo tarpaulin --out lcov --output-dir coverage"
+run = "mkdir -p coverage && cargo llvm-cov --lcov --output-path coverage/lcov.info"
 
 [tasks."test:doc"]
 description = "Runs the project's doc tests."
@@ -27,7 +31,7 @@ description = "Runs the project's unit tests."
 run = "cargo test --bins --lib"
 
 [tools]
-"cargo:cargo-tarpaulin" = "latest"
+"cargo:cargo-llvm-cov" = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["rust"]
