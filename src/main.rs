@@ -2,7 +2,7 @@ use changelog::{do_stuff, Config};
 use clap::{Arg, ArgAction, Command};
 
 fn main() {
-    let command = Command::new("rs-changelog")
+    let command = Command::new("changelog")
         .author("Phil Lavoie")
         .about("This program doesn't do shit.")
         .arg(
