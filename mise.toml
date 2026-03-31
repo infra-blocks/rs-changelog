@@ -32,6 +32,4 @@ run = "cargo test --bins --lib"
 
 [tools]
 "cargo:cargo-llvm-cov" = "latest"
-
-[settings]
-idiomatic_version_file_enable_tools = ["rust"]
+"rust" = { version = "1.94.1", components = "clippy,llvm-tools,llvm-tools-preview,rustfmt,rust-analyzer" }

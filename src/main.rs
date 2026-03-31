@@ -1,38 +1,101 @@
-use changelog::{do_stuff, Config};
-use clap::{Arg, ArgAction, Command};
+use std::{borrow::Cow, path::Path};
 
-fn main() {
+use changelog::{debug, parse_ast, Node, Tree};
+use clap::{arg, Command};
+use miette::{IntoDiagnostic, Result};
+use ptree::{print_tree, TreeItem};
+
+fn main() -> Result<()> {
     let command = Command::new("rs-changelog")
-        .author("Phil Lavoie")
-        .about("This program doesn't do shit.")
-        .arg(
-            Arg::new("positional")
-                .index(1)
-                .help("A positional argument that ain't doin' shit")
-                .required(true),
+        .author("El Pendeloco")
+        .subcommand(
+            Command::new("ast")
+                .about("This program takes in a markdown file name and produces an AST.")
+                .arg(arg!(<file> "The markdown file to parse.")),
         )
-        .arg(
-            Arg::new("flag")
-                .short('f')
-                .long("flag")
-                .help("A flag (without value) that ain't doin' shit.")
-                .action(ArgAction::SetTrue),
+        .subcommand(
+            Command::new("debug")
+                .about("This command outputs the result of running the file through pulldown-cmark")
+                .arg(arg!(<file> "The markdown file to parse.")),
         )
-        .arg(
-            Arg::new("option")
-                .short('o')
-                .long("option")
-                .help("An option (with a value) that ain't doin' shit.")
-                .action(ArgAction::Set),
-        )
-        .after_help(
-            "This program holds the boilerplate, template code for rust binaries. \
-        It isn't meant to be used on its own.",
-        );
+        .after_help("This program is a work in progress.");
     let matches = command.get_matches();
-    do_stuff(Config {
-        flag: matches.get_flag("flag"),
-        option: matches.get_one::<String>("option").cloned(),
-        positional: matches.get_one::<String>("positional").unwrap().to_string(),
-    })
+    match matches.subcommand() {
+        Some(("ast", sub)) => {
+            let file = sub.get_one::<String>("file").unwrap();
+            let content = read_file(file)?;
+            let tree = parse_ast(&content);
+            PrettyTree::from(&tree).pretty_print().into_diagnostic()?;
+        }
+        Some(("debug", sub)) => {
+            let file = sub.get_one::<String>("file").unwrap();
+            let content = read_file(file)?;
+            debug(&content);
+        }
+        Some((unknown, _)) => panic!("unknown subcommand: {}", unknown),
+        None => panic!("unexpected lack of subcommand"),
+    };
+    Ok(())
+}
+
+fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
+    std::fs::read_to_string(&path).into_diagnostic()
+}
+
+#[derive(Clone)]
+struct PrettyTree<'a, 'b: 'a>(&'b Tree<'a>);
+
+impl<'a, 'b: 'a> PrettyTree<'a, 'b> {
+    fn pretty_print(&self) -> std::io::Result<()> {
+        print_tree(self)
+    }
+}
+
+impl<'a, 'b: 'a> From<&'b Tree<'a>> for PrettyTree<'a, 'b> {
+    fn from(value: &'b Tree<'a>) -> Self {
+        PrettyTree(value)
+    }
+}
+
+impl<'a, 'b: 'a> TreeItem for PrettyTree<'a, 'b> {
+    type Child = PrettyNode<'a, 'b>;
+
+    fn write_self<W: std::io::Write>(
+        &self,
+        f: &mut W,
+        style: &ptree::Style,
+    ) -> std::io::Result<()> {
+        write!(f, "{}", style.paint("Document"))
+    }
+
+    fn children(&self) -> Cow<'_, [Self::Child]> {
+        Cow::from(pretty_nodes(&self.0.branches))
+    }
+}
+
+#[derive(Clone)]
+struct PrettyNode<'a, 'b: 'a>(&'b Node<'a>);
+
+impl<'a, 'b: 'a> TreeItem for PrettyNode<'a, 'b> {
+    type Child = Self;
+
+    fn write_self<W: std::io::Write>(
+        &self,
+        f: &mut W,
+        style: &ptree::Style,
+    ) -> std::io::Result<()> {
+        write!(
+            f,
+            "{}",
+            style.paint(format!("{:?}", (&self.0.event, &self.0.range)))
+        )
+    }
+
+    fn children(&self) -> Cow<'_, [Self::Child]> {
+        Cow::from(pretty_nodes(&self.0.children))
+    }
+}
+
+fn pretty_nodes<'a, 'b: 'a>(children: &'b [Node<'a>]) -> Vec<PrettyNode<'a, 'b>> {
+    children.iter().map(PrettyNode).collect()
 }
