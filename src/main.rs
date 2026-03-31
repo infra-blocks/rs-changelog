@@ -1,38 +1,18 @@
-use changelog::{do_stuff, Config};
-use clap::{Arg, ArgAction, Command};
+use changelog::parse_file;
+use clap::{Arg, Command};
 
 fn main() {
-    let command = Command::new("changelog")
-        .author("Phil Lavoie")
-        .about("This program doesn't do shit.")
+    let command = Command::new("rs-changelog")
+        .author("El Pendeloco")
+        .about("This program takes in a markdown file name and parses it.")
         .arg(
-            Arg::new("positional")
+            Arg::new("file")
                 .index(1)
-                .help("A positional argument that ain't doin' shit")
+                .help("The markdown file to parse.")
                 .required(true),
         )
-        .arg(
-            Arg::new("flag")
-                .short('f')
-                .long("flag")
-                .help("A flag (without value) that ain't doin' shit.")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("option")
-                .short('o')
-                .long("option")
-                .help("An option (with a value) that ain't doin' shit.")
-                .action(ArgAction::Set),
-        )
-        .after_help(
-            "This program holds the boilerplate, template code for rust binaries. \
-        It isn't meant to be used on its own.",
-        );
+        .after_help("This program is a work in progress.");
     let matches = command.get_matches();
-    do_stuff(Config {
-        flag: matches.get_flag("flag"),
-        option: matches.get_one::<String>("option").cloned(),
-        positional: matches.get_one::<String>("positional").unwrap().to_string(),
-    })
+    let file_path = matches.get_one::<String>("file").unwrap();
+    parse_file(file_path);
 }
