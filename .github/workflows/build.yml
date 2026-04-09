@@ -16,6 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v4
+        with:
+          # Turning off the cache, as it doesn't cache the rustup components located
+          # outside the mise directory on runners (/home/runner/.local/share/mise).
+          # Instead, the cache restore succeeds, the RUSTUP_TOOLCHAIN env var is injected
+          # and rustup completely ignores the rust-toolchain.toml file. This leads to
+          # CI failures where expected components don't exist.
+          cache: false
       - run: mise ci
       - uses: codecov/codecov-action@v4
         env:
