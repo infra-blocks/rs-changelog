@@ -6,6 +6,10 @@ run = "cargo build"
 description = "Runs the CI jobs."
 run = [{ task = "build" }, { tasks = ["lint", "test:coverage:lcov"] }]
 
+[tasks.fix]
+description = "Formats and fixes the code."
+run = "cargo fmt && cargo clippy --all-targets --all-features --fix --allow-dirty -- -D warnings"
+
 [tasks.lint]
 description = "Lints the project."
 run = "cargo fmt -- --check && cargo clippy --all-targets --all-features -- -D warnings"
