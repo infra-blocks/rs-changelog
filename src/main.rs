@@ -1,6 +1,7 @@
 use std::{borrow::Cow, path::Path};
 
-use changelog::{debug, parse_ast, Node, Tree};
+use changelog::{debug, parse_ast};
+use changelog_ast::{Node, Tree};
 use clap::{arg, Command};
 use miette::{IntoDiagnostic, Result};
 use ptree::{print_tree, TreeItem};

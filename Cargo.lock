@@ -127,11 +127,19 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 name = "changelog"
 version = "0.0.0"
 dependencies = [
+ "changelog-ast",
  "clap",
  "miette",
  "ptree",
  "pulldown-cmark",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "changelog-ast"
+version = "0.0.0"
+dependencies = [
+ "pulldown-cmark",
 ]
 
 [[package]]

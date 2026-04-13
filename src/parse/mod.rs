@@ -1,12 +1,9 @@
-mod ast;
-
-pub use ast::{Node, Tree};
+use changelog_ast::Tree;
 
 use pulldown_cmark::Parser;
 
 pub fn parse_ast<'a>(source: &'a str) -> Tree<'a> {
-    let parser = Parser::new(source);
-    Tree::parse(parser)
+    Tree::parse(source)
 }
 
 pub fn debug(source: &str) {

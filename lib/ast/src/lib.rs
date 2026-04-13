@@ -12,7 +12,8 @@ pub struct Tree<'a> {
 }
 
 impl<'a> Tree<'a> {
-    pub fn parse(parser: Parser<'a>) -> Self {
+    pub fn parse(source: &'a str) -> Self {
+        let parser = Parser::new(source);
         let mut iter = parser.into_offset_iter().peekable();
         let mut branches = Vec::new();
         while let Some(value) = Node::parse_node(&mut iter) {
