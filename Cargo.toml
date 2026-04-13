@@ -4,8 +4,12 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+changelog-ast = { path = "lib/ast" }
 clap = "4.6.0"
 miette = "7.6.0"
 ptree = "0.5.2"
 pulldown-cmark = "0.13.3"
 thiserror = "2.0.18"
+
+[workspace]
+members = ["lib/ast"]
