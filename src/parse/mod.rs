@@ -1,9 +1,8 @@
-use changelog_ast::Tree;
-
+use changelog_ast::Ast;
 use pulldown_cmark::Parser;
 
-pub fn parse_ast<'a>(source: &'a str) -> Tree<'a> {
-    Tree::parse(source)
+pub fn parse_ast(source: &str) -> Ast<'_> {
+    Ast::parse(source)
 }
 
 pub fn debug(source: &str) {
