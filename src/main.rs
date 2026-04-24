@@ -1,12 +1,13 @@
 use std::{borrow::Cow, path::Path};
 
 use changelog::{debug, parse_ast};
-use changelog_ast::{Node, Tree};
+use changelog_ast::{Ast, Node};
 use clap::{arg, Command};
 use miette::{IntoDiagnostic, Result};
 use ptree::{print_tree, TreeItem};
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
     let command = Command::new("rs-changelog")
         .author("El Pendeloco")
         .subcommand(
@@ -26,7 +27,7 @@ fn main() -> Result<()> {
             let file = sub.get_one::<String>("file").unwrap();
             let content = read_file(file)?;
             let tree = parse_ast(&content);
-            PrettyTree::from(&tree).pretty_print().into_diagnostic()?;
+            PrettyAst::from(&tree).pretty_print().into_diagnostic()?;
         }
         Some(("debug", sub)) => {
             let file = sub.get_one::<String>("file").unwrap();
@@ -44,40 +45,41 @@ fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
 }
 
 #[derive(Clone)]
-struct PrettyTree<'a, 'b: 'a>(&'b Tree<'a>);
+struct PrettyAst<'ast, 'source: 'ast>(&'ast Ast<'source>);
 
-impl<'a, 'b: 'a> PrettyTree<'a, 'b> {
+impl<'ast, 'source: 'ast> PrettyAst<'ast, 'source> {
     fn pretty_print(&self) -> std::io::Result<()> {
         print_tree(self)
     }
 }
 
-impl<'a, 'b: 'a> From<&'b Tree<'a>> for PrettyTree<'a, 'b> {
-    fn from(value: &'b Tree<'a>) -> Self {
-        PrettyTree(value)
+impl<'ast, 'source: 'ast> From<&'ast Ast<'source>> for PrettyAst<'ast, 'source> {
+    fn from(value: &'ast Ast<'source>) -> Self {
+        PrettyAst(value)
     }
 }
 
-impl<'a, 'b: 'a> TreeItem for PrettyTree<'a, 'b> {
-    type Child = PrettyNode<'a, 'b>;
+impl<'ast, 'source: 'ast> TreeItem for PrettyAst<'ast, 'source> {
+    type Child = PrettyNode<'ast, 'source>;
 
     fn write_self<W: std::io::Write>(
         &self,
         f: &mut W,
         style: &ptree::Style,
     ) -> std::io::Result<()> {
-        write!(f, "{}", style.paint("Document"))
+        write!(f, "{}", style.paint("Ast"))
     }
 
     fn children(&self) -> Cow<'_, [Self::Child]> {
-        Cow::from(pretty_nodes(&self.0.branches))
+        Cow::from(self.0.nodes.iter().map(PrettyNode).collect::<Vec<_>>())
     }
 }
 
+// TODO: implement with block or inline.
 #[derive(Clone)]
-struct PrettyNode<'a, 'b: 'a>(&'b Node<'a>);
+struct PrettyNode<'ast, 'source: 'ast>(&'ast Node<'source>);
 
-impl<'a, 'b: 'a> TreeItem for PrettyNode<'a, 'b> {
+impl<'ast, 'source: 'ast> TreeItem for PrettyNode<'ast, 'source> {
     type Child = Self;
 
     fn write_self<W: std::io::Write>(
@@ -85,18 +87,13 @@ impl<'a, 'b: 'a> TreeItem for PrettyNode<'a, 'b> {
         f: &mut W,
         style: &ptree::Style,
     ) -> std::io::Result<()> {
-        write!(
-            f,
-            "{}",
-            style.paint(format!("{:?}", (&self.0.event, &self.0.range)))
-        )
+        write!(f, "{}", style.paint(format!("{:?}", &self.0)))
     }
 
     fn children(&self) -> Cow<'_, [Self::Child]> {
-        Cow::from(pretty_nodes(&self.0.children))
+        Cow::from(match self.0 {
+            Node::Leaf(_) => vec![],
+            Node::Internal(internal) => internal.children.iter().map(PrettyNode).collect(),
+        })
     }
-}
-
-fn pretty_nodes<'a, 'b: 'a>(children: &'b [Node<'a>]) -> Vec<PrettyNode<'a, 'b>> {
-    children.iter().map(PrettyNode).collect()
 }

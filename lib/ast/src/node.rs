@@ -1,66 +1,53 @@
-use std::{iter::Peekable, ops::Range};
-
 use pulldown_cmark::{Event, OffsetIter, TagEnd};
 
+use crate::{Internal, Leaf, markdown::MarkdownItem};
+
+/// The AST node type.
+///
+/// It's an enum with 2 variants:
+/// - One for [`Internal`] nodes,
+/// - One for [`Leaf`] nodes.
+///
+/// [`Internal`] nodes correspond to [`Event::Start`]. All subsequent events until a matching
+/// [`Event::End`] event is found are turned into children nodes.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Node<'a> {
-    pub event: Event<'a>,
-    pub range: Range<usize>,
-    pub children: Vec<Node<'a>>,
+pub enum Node<'source> {
+    /// The leaf variant of nodes. Guaranteed to have no children.
+    Leaf(Leaf<'source>),
+    /// The internal variat of nodes. Guaranteed to have children.
+    Internal(Internal<'source>),
 }
 
-impl<'a> Node<'a> {
-    fn new(event: Event<'a>, range: Range<usize>, children: Vec<Node<'a>>) -> Self {
-        Node {
-            event,
-            range,
-            children,
+impl<'source> Node<'source> {
+    pub(crate) fn consume_one(head: MarkdownItem<'source>, iter: &mut OffsetIter<'source>) -> Self {
+        match Leaf::try_from(head) {
+            Ok(leaf) => Self::Leaf(leaf),
+            Err(head) => Self::Internal(
+                Internal::try_consume_one(head, iter)
+                    // This should work, as it should work for any Event::Start, and the event
+                    // should be an Event::Start as this point.
+                    .expect("unexpected failure while converting internal"),
+            ),
         }
     }
 
-    fn new_childless(event: Event<'a>, range: Range<usize>) -> Self {
-        Self::new(event, range, vec![])
-    }
+    // TODO: could make a lazy iter instead.
+    pub(crate) fn collect_until(until: TagEnd, iter: &mut OffsetIter<'source>) -> Vec<Self> {
+        let mut result = vec![];
 
-    pub(super) fn parse_node(iter: &mut Peekable<OffsetIter<'a>>) -> Option<Self> {
-        if let Some(value) = iter.next() {
-            match value.0 {
-                Event::Start(ref tag) => {
-                    let children = parse_children(iter, tag.to_end());
-                    let node = Node::new(value.0, value.1, children);
-                    Some(node)
-                }
-                // Tag endings should always match a start tag, which should always dispatch to a parse_children.
-                Event::End(tag_end) => panic!("unexpected tag ending {:?} while parsing", tag_end),
-                _ => Some(Self::new_childless(value.0, value.1)),
+        while let Some(item) = iter.next() {
+            if let Event::End(end) = item.0
+                && end == until
+            {
+                return result;
             }
-        } else {
-            None
-        }
-    }
-}
 
-fn parse_children<'a>(iter: &mut Peekable<OffsetIter<'a>>, until: TagEnd) -> Vec<Node<'a>> {
-    let mut nodes = vec![];
-    while let Some(value) = iter.peek() {
-        match value.0 {
-            Event::End(tag_end) => {
-                assert!(
-                    tag_end == until,
-                    "invalid tag end while parsing children: expected {:?}, got {:?}",
-                    until,
-                    tag_end
-                );
-                iter.next();
-                return nodes;
-            }
-            _ => nodes.push(Node::parse_node(iter).unwrap_or_else(|| {
-                panic!("unexpected end of input reached before tag end {:?}", until)
-            })),
+            result.push(Node::consume_one(item, iter));
         }
+
+        unreachable!(
+            "haven't reached expected end {:?} before end of input mfk!!!",
+            until
+        );
     }
-    panic!(
-        "unexpected end of input while parsing children until {:?}",
-        until
-    );
 }
