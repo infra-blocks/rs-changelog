@@ -1,8 +1,14 @@
-use changelog_ast::Ast;
+use changelog_ast::{AstIterator, Node};
 use pulldown_cmark::Parser;
 
+pub struct Ast<'source> {
+    pub nodes: Vec<Node<'source>>,
+}
+
 pub fn parse_ast(source: &str) -> Ast<'_> {
-    Ast::parse(source)
+    Ast {
+        nodes: AstIterator::new(source).collect(),
+    }
 }
 
 pub fn debug(source: &str) {
