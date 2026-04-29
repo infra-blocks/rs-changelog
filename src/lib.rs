@@ -1,3 +1,3 @@
 mod parse;
 
-pub use parse::{debug, parse_ast};
+pub use parse::*;

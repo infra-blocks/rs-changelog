@@ -11,44 +11,33 @@ use pulldown_cmark::{OffsetIter, Parser};
 
 /// Main data structure exported by this crate.
 ///
-/// It is obtained using [`Ast::parse`] on a `&str`. It leverages [`pulldown_cmark`] to parse
-/// the markdown and construct the Ast.
+/// It is an iterator built on top of the ones provided by [`pulldown_cmark`]. Unlike the latter,
+/// it does not produce events but [`Node`]s. The main difference between the two is the hierarchical
+/// structure the [`Node`]'s offer. [`Node`]s have children, [`pulldown_cmark`]'s event don't.
+///
+/// The iterator resolves branches eagerly, and yields one branch at a time, with the returned [`Node`]
+/// being the root of the branch.
 ///
 /// The algorithm is quite simple: every [`Event::Start`] is turned into an [`Node::Internal`] node,
-/// every [`Event::End`] is dropped, and every other event is transformed into a [`Node::Leaf`] variant.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Ast<'source> {
-    /// Top-level nodes.
-    pub nodes: Vec<Node<'source>>,
-}
-
-impl<'source> Ast<'source> {
-    pub fn parse(source: &'source str) -> Self {
-        let parser = Parser::new(source);
-        let iter = NodesIterator::new(parser.into_offset_iter());
-        Ast {
-            nodes: iter.collect(),
-        }
-    }
-}
-
-struct NodesIterator<'source> {
+/// every following event is treated as a child of the node. The final matching [`Event::End`] signifies
+/// the node has been constructed (and the event itself is dropped). Every other [`pulldown_cmark`]
+/// event is transformed into a [`Node::Leaf`] variant.
+pub struct AstIterator<'source> {
     inner: OffsetIter<'source>,
 }
 
-impl<'source> NodesIterator<'source> {
-    pub fn new(inner: OffsetIter<'source>) -> Self {
+impl<'source> AstIterator<'source> {
+    pub fn new(source: &'source str) -> Self {
+        let parser = Parser::new(source);
+        Self::with_inner(parser.into_offset_iter())
+    }
+
+    fn with_inner(inner: OffsetIter<'source>) -> Self {
         Self { inner }
     }
 }
 
-impl<'source> From<OffsetIter<'source>> for NodesIterator<'source> {
-    fn from(value: OffsetIter<'source>) -> Self {
-        Self::new(value)
-    }
-}
-
-impl<'source> Iterator for NodesIterator<'source> {
+impl<'source> Iterator for AstIterator<'source> {
     type Item = Node<'source>;
 
     fn next(&mut self) -> Option<Self::Item> {
