@@ -1,10 +1,14 @@
+mod ast;
+
 use std::{borrow::Cow, path::Path};
 
-use changelog::{debug, parse_ast, Ast};
+use changelog::{Rules, debug, parse};
 use changelog_ast::Node;
-use clap::{arg, Command};
+use clap::{Command, arg};
 use miette::{IntoDiagnostic, Result};
-use ptree::{print_tree, TreeItem};
+use ptree::{TreeItem, print_tree};
+
+use crate::ast::{Ast, parse_ast};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -20,19 +24,29 @@ fn main() -> Result<()> {
                 .about("This command outputs the result of running the file through pulldown-cmark")
                 .arg(arg!(<file> "The markdown file to parse.")),
         )
+        .subcommand(
+            Command::new("lint")
+                .about("This command lints the provided changelog.")
+                .arg(arg!(<file> "The mardkwon file to lint.")),
+        )
         .after_help("This program is a work in progress.");
     let matches = command.get_matches();
     match matches.subcommand() {
-        Some(("ast", sub)) => {
-            let file = sub.get_one::<String>("file").unwrap();
+        Some(("ast", args)) => {
+            let file = args.get_one::<String>("file").unwrap();
             let content = read_file(file)?;
             let tree = parse_ast(&content);
             PrettyAst::from(&tree).pretty_print().into_diagnostic()?;
         }
-        Some(("debug", sub)) => {
-            let file = sub.get_one::<String>("file").unwrap();
+        Some(("debug", args)) => {
+            let file = args.get_one::<String>("file").unwrap();
             let content = read_file(file)?;
             debug(&content);
+        }
+        Some(("lint", args)) => {
+            let file = args.get_one::<String>("file").unwrap();
+            let content = read_file(file)?;
+            parse(&content, Rules::default()).into_diagnostic()?;
         }
         Some((unknown, _)) => panic!("unknown subcommand: {}", unknown),
         None => panic!("unexpected lack of subcommand"),
@@ -75,7 +89,6 @@ impl<'ast, 'source: 'ast> TreeItem for PrettyAst<'ast, 'source> {
     }
 }
 
-// TODO: implement with block or inline.
 #[derive(Clone)]
 struct PrettyNode<'ast, 'source: 'ast>(&'ast Node<'source>);
 

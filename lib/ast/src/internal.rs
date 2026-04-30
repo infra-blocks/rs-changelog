@@ -57,13 +57,7 @@ pub enum InternalEvent<'source> {
     List(Option<u64>),
     Item,
     Paragraph,
-    Heading {
-        level: HeadingLevel,
-        id: Option<CowStr<'source>>,
-        classes: Vec<CowStr<'source>>,
-        /// The first item of the tuple is the attr and second one the value.
-        attrs: Vec<(CowStr<'source>, Option<CowStr<'source>>)>,
-    },
+    Heading(Heading<'source>),
     CodeBlock(CodeBlockKind<'source>),
     HtmlBlock,
     FootnoteDefinition(CowStr<'source>),
@@ -94,6 +88,19 @@ pub enum InternalEvent<'source> {
     MetadataBlock(MetadataBlockKind),
 }
 
+impl<'source> InternalEvent<'source> {
+    pub fn is_heading(&self) -> bool {
+        matches!(self, InternalEvent::Heading(_))
+    }
+
+    pub fn unwrap_heading(self) -> Heading<'source> {
+        match self {
+            InternalEvent::Heading(heading) => heading,
+            _ => panic!("cannot unwrap heading on {:?}", self),
+        }
+    }
+}
+
 impl<'source> From<Tag<'source>> for InternalEvent<'source> {
     fn from(value: Tag<'source>) -> Self {
         match value {
@@ -103,12 +110,12 @@ impl<'source> From<Tag<'source>> for InternalEvent<'source> {
                 id,
                 classes,
                 attrs,
-            } => Self::Heading {
+            } => Self::Heading(Heading {
                 level,
                 id,
                 classes,
                 attrs,
-            },
+            }),
             Tag::BlockQuote(kind) => Self::BlockQuote(kind),
             Tag::CodeBlock(kind) => Self::CodeBlock(kind),
             Tag::HtmlBlock => Self::HtmlBlock,
@@ -150,6 +157,43 @@ impl<'source> From<Tag<'source>> for InternalEvent<'source> {
                 title,
             },
             Tag::MetadataBlock(kind) => Self::MetadataBlock(kind),
+        }
+    }
+}
+
+/// A named struct representation of a heading.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Heading<'source> {
+    pub level: HeadingLevel,
+    pub id: Option<CowStr<'source>>,
+    pub classes: Vec<CowStr<'source>>,
+    /// The first item of the tuple is the attr and second one the value.
+    pub attrs: Vec<(CowStr<'source>, Option<CowStr<'source>>)>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod unwrap_heading {
+        use super::*;
+
+        #[test]
+        #[should_panic]
+        fn should_fail_for_paragraph() {
+            InternalEvent::Paragraph.unwrap_heading();
+        }
+
+        #[test]
+        fn should_work_for_heading() {
+            let heading = Heading {
+                level: HeadingLevel::H2,
+                id: Option::default(),
+                classes: Vec::default(),
+                attrs: Vec::default(),
+            };
+            let event = InternalEvent::Heading(heading.clone());
+            assert_eq!(heading, event.unwrap_heading());
         }
     }
 }

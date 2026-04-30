@@ -8,31 +8,31 @@ run = [{ task = "build" }, { tasks = ["lint", "test:coverage:lcov"] }]
 
 [tasks.fix]
 description = "Formats and fixes the code."
-run = "cargo fmt && cargo clippy --all-targets --all-features --fix --allow-dirty -- -D warnings"
+run = "cargo fmt --all && cargo clippy --workspace --all-targets --all-features --fix --allow-dirty -- -D warnings"
 
 [tasks.lint]
 description = "Lints the project."
-run = "cargo fmt -- --check && cargo clippy --all-targets --all-features -- -D warnings"
+run = "cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings"
 
 [tasks.test]
 description = "Runs the project's tests."
-run = "cargo test"
+run = "cargo test --workspace"
 
 [tasks."test:coverage"]
 description = "Runs the project's tests and displays code coverage."
-run = "cargo llvm-cov"
+run = "cargo llvm-cov --workspace"
 
 [tasks."test:coverage:lcov"]
 description = "Runs the project's tests and aggregates code coverage in lcov format."
-run = "mkdir -p coverage && cargo llvm-cov --lcov --output-path coverage/lcov.info"
+run = "mkdir -p coverage && cargo llvm-cov --workspace --lcov --output-path coverage/lcov.info"
 
 [tasks."test:doc"]
 description = "Runs the project's doc tests."
-run = "cargo test --doc"
+run = "cargo test --doc --workspace"
 
 [tasks."test:unit"]
 description = "Runs the project's unit tests."
-run = "cargo test --bins --lib"
+run = "cargo test --bins --lib --workspace"
 
 [tools]
 "cargo:cargo-llvm-cov" = "latest"

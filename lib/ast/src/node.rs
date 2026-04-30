@@ -31,7 +31,7 @@ impl<'source> Node<'source> {
         }
     }
 
-    // TODO: could make a lazy iter instead.
+    // TODO: could make a lazy iter instead, and collect outside.
     pub(crate) fn collect_until(until: TagEnd, iter: &mut OffsetIter<'source>) -> Vec<Self> {
         let mut result = vec![];
 
@@ -49,5 +49,78 @@ impl<'source> Node<'source> {
             "haven't reached expected end {:?} before end of input mfk!!!",
             until
         );
+    }
+
+    pub fn is_internal_that<F: FnOnce(&Internal<'source>) -> bool>(&self, predicate: F) -> bool {
+        match self {
+            Node::Internal(internal) => predicate(internal),
+            _ => false,
+        }
+    }
+
+    pub fn unwrap_internal(self) -> Internal<'source> {
+        match self {
+            Node::Internal(internal) => internal,
+            _ => panic!("cannot unwrap internal on {:?}", self),
+        }
+    }
+
+    pub fn unwrap_leaf(self) -> Leaf<'source> {
+        match self {
+            Node::Leaf(leaf) => leaf,
+            _ => panic!("cannot unwrap leaf on {:?}", self),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod unwrap_internal {
+        use crate::{InternalEvent, LeafEvent};
+
+        use super::*;
+
+        #[test]
+        #[should_panic]
+        fn should_fail_with_leaf() {
+            Node::Leaf(Leaf::new(LeafEvent::SoftBreak, Default::default())).unwrap_internal();
+        }
+
+        #[test]
+        fn should_work_with_internal() {
+            let internal = Internal::new(
+                InternalEvent::Paragraph,
+                Default::default(),
+                Default::default(),
+            );
+            let node = Node::Internal(internal.clone());
+            assert_eq!(internal, node.unwrap_internal());
+        }
+    }
+
+    mod unwrap_leaf {
+        use crate::{InternalEvent, LeafEvent};
+
+        use super::*;
+
+        #[test]
+        #[should_panic]
+        fn should_fail_with_internal() {
+            Node::Internal(Internal::new(
+                InternalEvent::Paragraph,
+                Default::default(),
+                Default::default(),
+            ))
+            .unwrap_leaf();
+        }
+
+        #[test]
+        fn should_work_with_leaf() {
+            let leaf = Leaf::new(LeafEvent::SoftBreak, Default::default());
+            let node = Node::Leaf(leaf.clone());
+            assert_eq!(leaf, node.unwrap_leaf());
+        }
     }
 }
