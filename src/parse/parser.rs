@@ -2,10 +2,7 @@ use std::{collections::VecDeque, error::Error, fmt::Display};
 
 use changelog_ast::{AstIterator, Node};
 
-use crate::parse::{
-    changelog::{Changelog, Title, TitleHeading},
-    rules::{Rules, TitleRule},
-};
+use crate::parse::changelog::{Changelog, Title, TitleHeading};
 
 // TODO: could try to just reverse the vec if the parsing always goes in the same direction instead.
 pub(crate) type Unparsed<'source> = VecDeque<Node<'source>>;
@@ -50,13 +47,11 @@ impl Display for ParseTitleError {
 
 impl Error for ParseTitleError {}
 
-pub struct ChangelogParser {
-    pub(crate) rules: Rules,
-}
+pub struct ChangelogParser {}
 
 impl ChangelogParser {
-    pub fn new(rules: Rules) -> Self {
-        Self { rules }
+    pub fn new() -> Self {
+        Self {}
     }
 
     pub fn parse<'source>(&self, source: &'source str) -> Result<Changelog<'source>, ParseError> {
@@ -74,21 +69,15 @@ impl ChangelogParser {
         &self,
         unparsed: &mut Unparsed<'source>,
     ) -> Result<Option<Title<'source>>, ParseTitleError> {
-        match self.rules.title {
-            TitleRule::HeadingOnly => todo!(),
-            TitleRule::HeadingAndText => {
-                // The first node must match the title heading node.
-                let title_heading = self
-                    .parse_title_heading(unparsed)
-                    .ok_or(ParseTitleError::InvalidHeading)?;
-                let text_nodes = self.parse_title_text(unparsed);
-                if text_nodes.is_empty() {
-                    Err(ParseTitleError::MissingContent)
-                } else {
-                    Ok(Some(Title::new(title_heading, text_nodes)))
-                }
-            }
-            TitleRule::None => todo!(),
+        // The first node must match the title heading node.
+        let title_heading = self
+            .parse_title_heading(unparsed)
+            .ok_or(ParseTitleError::InvalidHeading)?;
+        let text_nodes = self.parse_title_text(unparsed);
+        if text_nodes.is_empty() {
+            Err(ParseTitleError::MissingContent)
+        } else {
+            Ok(Some(Title::new(title_heading, text_nodes)))
         }
     }
 
@@ -149,7 +138,7 @@ pub(crate) mod test {
                 ($source:expr, $error:expr) => {
                     let mut unparsed: VecDeque<_> = AstIterator::new($source).collect();
                     // TODO: TitleParser struct?
-                    let parser = ChangelogParser::new(Rules::default());
+                    let parser = ChangelogParser::new();
                     let result = parser.parse_title(&mut unparsed);
                     assert_eq!(result, Err($error));
                 };
@@ -188,7 +177,7 @@ pub(crate) mod test {
             fn should_succeed_for_a_valid_heading_and_one_paragraph() {
                 let mut unparsed: VecDeque<_> =
                     AstIterator::new("# Changelog\nIpsum lorem stfu etc...").collect();
-                let parser = ChangelogParser::new(Rules::default());
+                let parser = ChangelogParser::new();
                 let result = parser.parse_title(&mut unparsed);
                 assert_eq!(
                     result,

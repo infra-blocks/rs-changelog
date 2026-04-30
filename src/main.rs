@@ -2,7 +2,7 @@ mod ast;
 
 use std::{borrow::Cow, path::Path};
 
-use changelog::{Rules, debug, parse};
+use changelog::{debug, parse};
 use changelog_ast::Node;
 use clap::{Command, arg};
 use miette::{IntoDiagnostic, Result};
@@ -46,7 +46,7 @@ fn main() -> Result<()> {
         Some(("lint", args)) => {
             let file = args.get_one::<String>("file").unwrap();
             let content = read_file(file)?;
-            parse(&content, Rules::default()).into_diagnostic()?;
+            parse(&content).into_diagnostic()?;
         }
         Some((unknown, _)) => panic!("unknown subcommand: {}", unknown),
         None => panic!("unexpected lack of subcommand"),
