@@ -5,10 +5,12 @@ edition = "2024"
 
 [dependencies]
 changelog-ast = { path = "lib/ast" }
+chrono = "0.4.44"
 clap = "4.6.0"
 miette = "7.6.0"
 ptree = "0.5.2"
 pulldown-cmark = "0.13.3"
+semver = "1.0.28"
 thiserror = "2.0.18"
 tracing-subscriber = "0.3.23"
 
