@@ -51,6 +51,17 @@ impl<'source> Node<'source> {
         );
     }
 
+    /// Returns the result of calling the predicate against self if self is a leaf node,
+    /// otherwise returns false.
+    pub fn is_leaf_that<F: FnOnce(&Leaf<'source>) -> bool>(&self, predicate: F) -> bool {
+        match self {
+            Node::Leaf(leaf) => predicate(leaf),
+            _ => false,
+        }
+    }
+
+    /// Returns the result of calling the predicate against self if self is an internal node,
+    /// otherwise returns false.
     pub fn is_internal_that<F: FnOnce(&Internal<'source>) -> bool>(&self, predicate: F) -> bool {
         match self {
             Node::Internal(internal) => predicate(internal),
@@ -58,17 +69,27 @@ impl<'source> Node<'source> {
         }
     }
 
-    pub fn unwrap_internal(self) -> Internal<'source> {
-        match self {
-            Node::Internal(internal) => internal,
-            _ => panic!("cannot unwrap internal on {:?}", self),
-        }
-    }
-
+    /// Consumes and returns self as a [`Leaf`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if self is not a leaf a node.
     pub fn unwrap_leaf(self) -> Leaf<'source> {
         match self {
             Node::Leaf(leaf) => leaf,
             _ => panic!("cannot unwrap leaf on {:?}", self),
+        }
+    }
+
+    /// Consumes and returns self as a [`Internal`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if self is not an internal node.
+    pub fn unwrap_internal(self) -> Internal<'source> {
+        match self {
+            Node::Internal(internal) => internal,
+            _ => panic!("cannot unwrap internal on {:?}", self),
         }
     }
 }
@@ -77,26 +98,49 @@ impl<'source> Node<'source> {
 mod test {
     use super::*;
 
-    mod unwrap_internal {
+    mod is_leaf_that {
         use crate::{InternalEvent, LeafEvent};
 
         use super::*;
 
         #[test]
-        #[should_panic]
-        fn should_fail_with_leaf() {
-            Node::Leaf(Leaf::new(LeafEvent::SoftBreak, Default::default())).unwrap_internal();
-        }
-
-        #[test]
-        fn should_work_with_internal() {
-            let internal = Internal::new(
+        fn should_return_false_with_internal() {
+            let node = Node::Internal(Internal::new(
                 InternalEvent::Paragraph,
                 Default::default(),
                 Default::default(),
-            );
-            let node = Node::Internal(internal.clone());
-            assert_eq!(internal, node.unwrap_internal());
+            ));
+            assert!(!node.is_leaf_that(|_| true));
+        }
+
+        #[test]
+        fn should_return_the_predicate_value_with_leaf() {
+            let node = Node::Leaf(Leaf::new(LeafEvent::SoftBreak, Default::default()));
+            assert!(node.is_leaf_that(|leaf| leaf.event == LeafEvent::SoftBreak));
+            assert!(!node.is_leaf_that(|leaf| leaf.event != LeafEvent::SoftBreak));
+        }
+    }
+
+    mod is_internal_that {
+        use crate::{InternalEvent, LeafEvent};
+
+        use super::*;
+
+        #[test]
+        fn should_return_false_with_leaf() {
+            let node = Node::Leaf(Leaf::new(LeafEvent::SoftBreak, Default::default()));
+            assert!(!node.is_internal_that(|_| true));
+        }
+
+        #[test]
+        fn should_return_the_predicate_value_with_internal() {
+            let node = Node::Internal(Internal::new(
+                InternalEvent::Paragraph,
+                Default::default(),
+                Default::default(),
+            ));
+            assert!(node.is_internal_that(|internal| internal.event == InternalEvent::Paragraph));
+            assert!(!node.is_internal_that(|internal| internal.event != InternalEvent::Paragraph));
         }
     }
 
@@ -121,6 +165,29 @@ mod test {
             let leaf = Leaf::new(LeafEvent::SoftBreak, Default::default());
             let node = Node::Leaf(leaf.clone());
             assert_eq!(leaf, node.unwrap_leaf());
+        }
+    }
+
+    mod unwrap_internal {
+        use crate::{InternalEvent, LeafEvent};
+
+        use super::*;
+
+        #[test]
+        #[should_panic]
+        fn should_fail_with_leaf() {
+            Node::Leaf(Leaf::new(LeafEvent::SoftBreak, Default::default())).unwrap_internal();
+        }
+
+        #[test]
+        fn should_work_with_internal() {
+            let internal = Internal::new(
+                InternalEvent::Paragraph,
+                Default::default(),
+                Default::default(),
+            );
+            let node = Node::Internal(internal.clone());
+            assert_eq!(internal, node.unwrap_internal());
         }
     }
 }
