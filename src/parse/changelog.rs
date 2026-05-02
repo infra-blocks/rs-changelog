@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use changelog_ast::{Heading, Internal, InternalEvent, Node};
+use changelog_ast::Node;
 use pulldown_cmark::{CowStr, HeadingLevel};
 
 // TODO: implement ToOwned
@@ -37,18 +37,9 @@ pub struct TitleHeading<'source> {
 
 impl<'source> TitleHeading<'source> {
     pub fn is_title_heading(node: &Node<'_>) -> bool {
-        matches!(
-            node,
-            Node::Internal(Internal {
-                event: InternalEvent::Heading(Heading {
-                    level: HeadingLevel::H1,
-                    id: _,
-                    classes: _,
-                    attrs: _,
-                }),
-                range: _,
-                children: _,
-            })
+        matches!(            node,
+
+            Node::Heading(heading) if heading.level == HeadingLevel::H1
         )
     }
 }

@@ -90,11 +90,10 @@ impl ChangelogParser {
             // TODO: if the enum variants included the children and range directly, it would be easier
             // to convert through a TryFrom, for example.
             .map(|node| {
-                let internal = node.unwrap_internal();
-                let heading = internal.event.unwrap_heading();
+                let heading = node.unwrap_heading();
                 TitleHeading {
-                    children: internal.children,
-                    range: internal.range,
+                    children: heading.children,
+                    range: heading.range,
                     id: heading.id,
                     classes: heading.classes,
                     attrs: heading.attrs,
@@ -109,16 +108,12 @@ impl ChangelogParser {
     ) -> Vec<Node<'source>> {
         let mut result = vec![];
         while let Some(node) = unparsed.front()
-            && !is_heading(node)
+            && !node.is_heading()
         {
             result.push(unparsed.pop_front().unwrap())
         }
         result
     }
-}
-
-pub(crate) fn is_heading(node: &Node<'_>) -> bool {
-    node.is_internal_that(|internal| internal.event.is_heading())
 }
 
 #[cfg(test)]
@@ -129,7 +124,7 @@ pub(crate) mod test {
         use super::*;
 
         mod heading_and_text_rule {
-            use changelog_ast::{Internal, InternalEvent, Leaf, LeafEvent};
+            use changelog_ast::{Paragraph, Text};
             use pulldown_cmark::CowStr;
 
             use super::*;
@@ -183,23 +178,22 @@ pub(crate) mod test {
                     result,
                     Ok(Some(Title::new(
                         TitleHeading {
-                            children: vec![Node::Leaf(Leaf {
-                                event: LeafEvent::Text(CowStr::Borrowed("Changelog")),
-                                range: 2..11
-                            })],
+                            children: vec![Node::Text(Text::new(
+                                2..11,
+                                CowStr::Borrowed("Changelog")
+                            ))],
                             range: 0..12,
                             id: None,
                             classes: Default::default(),
                             attrs: Default::default()
                         },
-                        vec![Node::Internal(Internal {
-                            event: InternalEvent::Paragraph,
-                            range: 12..35,
-                            children: vec![Node::Leaf(Leaf {
-                                event: LeafEvent::Text(CowStr::Borrowed("Ipsum lorem stfu etc...")),
-                                range: 12..35
-                            })]
-                        })]
+                        vec![Node::Paragraph(Paragraph::new(
+                            12..35,
+                            vec![Node::Text(Text::new(
+                                12..35,
+                                CowStr::Borrowed("Ipsum lorem stfu etc...")
+                            ))],
+                        ))],
                     )))
                 );
             }
