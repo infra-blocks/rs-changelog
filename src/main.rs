@@ -104,9 +104,43 @@ impl<'ast, 'source: 'ast> TreeItem for PrettyNode<'ast, 'source> {
     }
 
     fn children(&self) -> Cow<'_, [Self::Child]> {
+        // TODO: consider providing a children iterator on nodes.
         Cow::from(match self.0 {
-            Node::Leaf(_) => vec![],
-            Node::Internal(internal) => internal.children.iter().map(PrettyNode).collect(),
+            Node::BlockQuote(inner) => inner.children.iter().map(Self).collect(),
+            Node::CodeBlock(inner) => inner.children.iter().map(Self).collect(),
+            Node::DefinitionList(inner) => inner.children.iter().map(Self).collect(),
+            Node::DefinitionListTitle(inner) => inner.children.iter().map(Self).collect(),
+            Node::DefinitionListDefinition(inner) => inner.children.iter().map(Self).collect(),
+            Node::Emphasis(inner) => inner.children.iter().map(Self).collect(),
+            Node::FootnoteDefinition(inner) => inner.children.iter().map(Self).collect(),
+            Node::Heading(inner) => inner.children.iter().map(Self).collect(),
+            Node::HtmlBlock(inner) => inner.children.iter().map(Self).collect(),
+            Node::Image(inner) => inner.children.iter().map(Self).collect(),
+            Node::Item(inner) => inner.children.iter().map(Self).collect(),
+            Node::Link(inner) => inner.children.iter().map(Self).collect(),
+            Node::List(inner) => inner.children.iter().map(Self).collect(),
+            Node::MetadataBlock(inner) => inner.children.iter().map(Self).collect(),
+            Node::Paragraph(inner) => inner.children.iter().map(Self).collect(),
+            Node::Strong(inner) => inner.children.iter().map(Self).collect(),
+            Node::Strikethrough(inner) => inner.children.iter().map(Self).collect(),
+            Node::Subscript(inner) => inner.children.iter().map(Self).collect(),
+            Node::Superscript(inner) => inner.children.iter().map(Self).collect(),
+            Node::Table(inner) => inner.children.iter().map(Self).collect(),
+            Node::TableCell(inner) => inner.children.iter().map(Self).collect(),
+            Node::TableHead(inner) => inner.children.iter().map(Self).collect(),
+            Node::TableRow(inner) => inner.children.iter().map(Self).collect(),
+            // Leaf nodes
+            Node::Code(_)
+            | Node::DisplayMath(_)
+            | Node::FootnoteReference(_)
+            | Node::HardBreak(_)
+            | Node::Html(_)
+            | Node::InlineHtml(_)
+            | Node::InlineMath(_)
+            | Node::Rule(_)
+            | Node::SoftBreak(_)
+            | Node::TaskListMarker(_)
+            | Node::Text(_) => vec![],
         })
     }
 }
