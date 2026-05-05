@@ -9,84 +9,84 @@ use crate::markdown::MarkdownItem;
 
 /// The Ast node type.
 ///
-/// It is a 1-to-1 mapping of [`pulldown_cmark::Event`], where [`Tag`] events are flattened
-/// and their children eagerly accumulated as [`Vec`]s.
+/// It is a 1-to-1 mapping of [pulldown_cmark::Event], where [Tag] events are flattened
+/// and their children eagerly accumulated as [Vec]s.
 ///
 /// Each variant maps to a named struct that can be used in client code so that, for example,
-/// a function can receive a [`Heading`] directly instead of a [`Node`].
+/// a function can receive a [Heading] directly instead of a [Node].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node<'source> {
     // Internal nodes. Those map to pulldown_cmark's "Tag" events.
-    /// A node corresponding to a [`Tag::BlockQuote`] event.
+    /// A node corresponding to a [Tag::BlockQuote] event.
     BlockQuote(BlockQuote<'source>),
-    /// A node corresponding to a [`Tag::CodeBlock`] event.
+    /// A node corresponding to a [Tag::CodeBlock] event.
     CodeBlock(CodeBlock<'source>),
-    /// A node corresponding to a [`Tag::DefinitionList`] event.
+    /// A node corresponding to a [Tag::DefinitionList] event.
     DefinitionList(DefinitionList<'source>),
-    /// A node corresponding to a [`Tag::DefinitionListTitle`] event.
+    /// A node corresponding to a [Tag::DefinitionListTitle] event.
     DefinitionListTitle(DefinitionListTitle<'source>),
-    /// A node corresponding to a [`Tag::DefinitionListDefinition`] event.
+    /// A node corresponding to a [Tag::DefinitionListDefinition] event.
     DefinitionListDefinition(DefinitionListDefinition<'source>),
-    /// A node corresponding to a [`Tag::Emphasis`] event.
+    /// A node corresponding to a [Tag::Emphasis] event.
     Emphasis(Emphasis<'source>),
-    /// A node corresponding to a [`Tag::FootnoteDefinition`] event.
+    /// A node corresponding to a [Tag::FootnoteDefinition] event.
     FootnoteDefinition(FootnoteDefinition<'source>),
-    /// A node corresponding to a [`Tag::Heading`] event.
+    /// A node corresponding to a [Tag::Heading] event.
     Heading(Heading<'source>),
-    /// A node corresponding to a [`Tag::HtmlBlock`] event.
+    /// A node corresponding to a [Tag::HtmlBlock] event.
     HtmlBlock(HtmlBlock<'source>),
-    /// A node corresponding to a [`Tag::Image`] event.
+    /// A node corresponding to a [Tag::Image] event.
     Image(Image<'source>),
-    /// A node corresponding to a [`Tag::Item`] event.
+    /// A node corresponding to a [Tag::Item] event.
     Item(Item<'source>),
-    /// A node corresponding to a [`Tag::Link`] event.
+    /// A node corresponding to a [Tag::Link] event.
     Link(Link<'source>),
-    /// A node corresponding to a [`Tag::List`] event.
+    /// A node corresponding to a [Tag::List] event.
     List(List<'source>),
-    /// A node corresponding to a [`Tag::MetadataBlock`] event.
+    /// A node corresponding to a [Tag::MetadataBlock] event.
     MetadataBlock(MetadataBlock<'source>),
-    /// A node corresponding to a [`Tag::Paragraph`] event.
+    /// A node corresponding to a [Tag::Paragraph] event.
     Paragraph(Paragraph<'source>),
-    /// A node corresponding to a [`Tag::Strong`] event.
+    /// A node corresponding to a [Tag::Strong] event.
     Strong(Strong<'source>),
-    /// A node corresponding to a [`Tag::Strikethrough`] event.
+    /// A node corresponding to a [Tag::Strikethrough] event.
     Strikethrough(Strikethrough<'source>),
-    /// A node corresponding to a [`Tag::Subscript`] event.
+    /// A node corresponding to a [Tag::Subscript] event.
     Subscript(Subscript<'source>),
-    /// A node corresponding to a [`Tag::Superscript`] event.
+    /// A node corresponding to a [Tag::Superscript] event.
     Superscript(Superscript<'source>),
-    /// A node corresponding to a [`Tag::Table`] event.
+    /// A node corresponding to a [Tag::Table] event.
     Table(Table<'source>),
-    /// A node corresponding to a [`Tag::TableCell`] event.
+    /// A node corresponding to a [Tag::TableCell] event.
     TableCell(TableCell<'source>),
-    /// A node corresponding to a [`Tag::TableHead`] event.
+    /// A node corresponding to a [Tag::TableHead] event.
     TableHead(TableHead<'source>),
-    /// A node corresponding to a [`Tag::TableRow`] event.
+    /// A node corresponding to a [Tag::TableRow] event.
     TableRow(TableRow<'source>),
 
     // Leaf nodes. Those map to pulldown_cmark events outside of "Tag"s.
-    /// A leaf node corresponding to an [`Event::Code`] event.
+    /// A leaf node corresponding to an [Event::Code] event.
     Code(Code<'source>),
-    /// A leaf node corresponding to an [`Event::DisplayMath`] event.
+    /// A leaf node corresponding to an [Event::DisplayMath] event.
     DisplayMath(DisplayMath<'source>),
-    /// A leaf node corresponding to an [`Event::FootnoteReference`] event.
+    /// A leaf node corresponding to an [Event::FootnoteReference] event.
     FootnoteReference(FootnoteReference<'source>),
-    /// A leaf node corresponding to an [`Event::HardBreak`] event.
+    /// A leaf node corresponding to an [Event::HardBreak] event.
     HardBreak(HardBreak),
     // Special case event that is always a child of an HtmlBlock.
-    /// A leaf node corresponding to an [`Event::Html`] event.
+    /// A leaf node corresponding to an [Event::Html] event.
     Html(Html<'source>),
-    /// A leaf node corresponding to an [`Event::InlineHtml`] event.
+    /// A leaf node corresponding to an [Event::InlineHtml] event.
     InlineHtml(InlineHtml<'source>),
-    /// A leaf node corresponding to an [`Event::InlineMath`] event.
+    /// A leaf node corresponding to an [Event::InlineMath] event.
     InlineMath(InlineMath<'source>),
-    /// A leaf node corresponding to an [`Event::Rule`] event.
+    /// A leaf node corresponding to an [Event::Rule] event.
     Rule(Rule),
-    /// A leaf node corresponding to an [`Event::SoftBreak`] event.
+    /// A leaf node corresponding to an [Event::SoftBreak] event.
     SoftBreak(SoftBreak),
-    /// A leaf node corresponding to an [`Event::TaskListMarker`] event.
+    /// A leaf node corresponding to an [Event::TaskListMarker] event.
     TaskListMarker(TaskListMarker),
-    /// A leaf node corresponding to an [`Event::Text`] event.
+    /// A leaf node corresponding to an [Event::Text] event.
     Text(Text<'source>),
 }
 
@@ -1417,7 +1417,7 @@ impl From<pulldown_cmark::HeadingLevel> for HeadingLevel {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HtmlBlock<'source> {
     pub range: Range<usize>,
-    // Those are all `Html` varians when constructed by this module.
+    // Those are all Html varians when constructed by this module.
     pub children: Vec<Node<'source>>,
 }
 

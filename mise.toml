@@ -12,7 +12,7 @@ run = "cargo fmt --all && cargo clippy --workspace --all-targets --all-features 
 
 [tasks.lint]
 description = "Lints the project."
-run = "cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings"
+run = "cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps"
 
 [tasks.test]
 description = "Runs the project's tests."

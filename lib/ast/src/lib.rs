@@ -9,17 +9,17 @@ use pulldown_cmark::{OffsetIter, Parser};
 
 /// Main data structure exported by this crate.
 ///
-/// It is an iterator built on top of the ones provided by [`pulldown_cmark`]. Unlike the latter,
-/// it does not produce events but [`Node`]s. The main difference between the two is the hierarchical
-/// structure the [`Node`]'s offer. [`Node`]s have children, [`pulldown_cmark`]'s event don't.
+/// It is an iterator built on top of the ones provided by [pulldown_cmark]. Unlike the latter,
+/// it does not produce events but [Node]s. The main difference between the two is the hierarchical
+/// structure the [Node]'s offer. [Node]s have children, [pulldown_cmark]'s event don't.
 ///
-/// The iterator resolves branches eagerly, and yields one branch at a time, with the returned [`Node`]
+/// The iterator resolves branches eagerly, and yields one branch at a time, with the returned [Node]
 /// being the root of the branch.
 ///
-/// The algorithm is quite simple: every [`Event::Start`] is turned into an [`Node::Internal`] node,
-/// every following event is treated as a child of the node. The final matching [`Event::End`] signifies
-/// the node has been constructed (and the event itself is dropped). Every other [`pulldown_cmark`]
-/// event is transformed into a [`Node::Leaf`] variant.
+/// The algorithm is quite simple: every [pulldown_cmark::Event::Start] is turned into an internal node,
+/// every following event is treated as a child of the node. The final matching [pulldown_cmark::Event::End] signifies
+/// the node has been constructed (the event itself is dropped). Every other [pulldown_cmark]
+/// event results in a leaf variant of [Node].
 pub struct AstIterator<'source> {
     inner: OffsetIter<'source>,
 }
