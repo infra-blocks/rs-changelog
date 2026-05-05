@@ -261,6 +261,46 @@ impl<'source> Node<'source> {
         matches!(self, Node::Text(_))
     }
 
+    /// Returns the range that the node's text spans within the source text.
+    pub fn range(&self) -> &Range<usize> {
+        match self {
+            Node::BlockQuote(inner) => &inner.range,
+            Node::CodeBlock(inner) => &inner.range,
+            Node::DefinitionList(inner) => &inner.range,
+            Node::DefinitionListTitle(inner) => &inner.range,
+            Node::DefinitionListDefinition(inner) => &inner.range,
+            Node::Emphasis(inner) => &inner.range,
+            Node::FootnoteDefinition(inner) => &inner.range,
+            Node::Heading(inner) => &inner.range,
+            Node::HtmlBlock(inner) => &inner.range,
+            Node::Image(inner) => &inner.range,
+            Node::Item(inner) => &inner.range,
+            Node::Link(inner) => &inner.range,
+            Node::List(inner) => &inner.range,
+            Node::MetadataBlock(inner) => &inner.range,
+            Node::Paragraph(inner) => &inner.range,
+            Node::Strong(inner) => &inner.range,
+            Node::Strikethrough(inner) => &inner.range,
+            Node::Subscript(inner) => &inner.range,
+            Node::Superscript(inner) => &inner.range,
+            Node::Table(inner) => &inner.range,
+            Node::TableCell(inner) => &inner.range,
+            Node::TableHead(inner) => &inner.range,
+            Node::TableRow(inner) => &inner.range,
+            Node::Code(inner) => &inner.range,
+            Node::DisplayMath(inner) => &inner.range,
+            Node::FootnoteReference(inner) => &inner.range,
+            Node::HardBreak(inner) => &inner.range,
+            Node::Html(inner) => &inner.range,
+            Node::InlineHtml(inner) => &inner.range,
+            Node::InlineMath(inner) => &inner.range,
+            Node::Rule(inner) => &inner.range,
+            Node::SoftBreak(inner) => &inner.range,
+            Node::TaskListMarker(inner) => &inner.range,
+            Node::Text(inner) => &inner.range,
+        }
+    }
+
     /// Unwraps the inner [BlockQuote] if self is [Self::BlockQuote].
     ///
     /// # Panics
