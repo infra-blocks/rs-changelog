@@ -1,7 +1,7 @@
 use std::ops::Range;
 
-use changelog_ast::Node;
-use pulldown_cmark::{CowStr, HeadingLevel};
+use changelog_ast::{HeadingLevel, Node};
+use pulldown_cmark::CowStr;
 
 // TODO: implement ToOwned
 #[derive(Debug, Clone, PartialEq)]
