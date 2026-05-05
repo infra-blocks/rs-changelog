@@ -1,7 +1,9 @@
 mod markdown;
 mod node;
+mod node_children_iterator;
 
 pub use node::*;
+pub use node_children_iterator::*;
 
 use pulldown_cmark::{OffsetIter, Parser};
 
