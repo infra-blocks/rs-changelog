@@ -1,7 +1,6 @@
 use std::{collections::VecDeque, marker::PhantomData, ops::Range};
 
 use changelog_ast::{Ast, Heading, Internal, InternalEvent, Node};
-use pulldown_cmark::HeadingLevel;
 
 use crate::lint::rules::Rules;
 

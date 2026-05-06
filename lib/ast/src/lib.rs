@@ -5,6 +5,10 @@ mod node_children_iterator;
 pub use node::*;
 pub use node_children_iterator::*;
 
+// Useful reexports.
+pub use pulldown_cmark::{
+    Alignment, BlockQuoteKind, CodeBlockKind, CowStr, HeadingLevel, LinkType, MetadataBlockKind,
+};
 use pulldown_cmark::{OffsetIter, Parser};
 
 /// Main data structure exported by this crate.
