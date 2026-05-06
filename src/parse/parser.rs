@@ -124,8 +124,7 @@ pub(crate) mod test {
         use super::*;
 
         mod heading_and_text_rule {
-            use changelog_ast::{Paragraph, Text};
-            use pulldown_cmark::CowStr;
+            use changelog_ast::{CowStr, Paragraph, Text};
 
             use super::*;
 

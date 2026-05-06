@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 use pulldown_cmark::{
-    Alignment, BlockQuoteKind, CodeBlockKind, CowStr, Event, LinkType, MetadataBlockKind,
-    OffsetIter, Tag, TagEnd,
+    Alignment, BlockQuoteKind, CodeBlockKind, CowStr, Event, HeadingLevel, LinkType,
+    MetadataBlockKind, OffsetIter, Tag, TagEnd,
 };
 
 use crate::markdown::MarkdownItem;
@@ -762,8 +762,7 @@ impl<'source> Node<'source> {
                 id,
                 classes,
                 attrs,
-            } => Heading::new_with_attributes(range, children, level.into(), id, classes, attrs)
-                .into(),
+            } => Heading::new_with_attributes(range, children, level, id, classes, attrs).into(),
             Tag::BlockQuote(kind) => BlockQuote::new(range, children, kind).into(),
             Tag::CodeBlock(kind) => CodeBlock::new(range, children, kind).into(),
             Tag::HtmlBlock => HtmlBlock::new(range, children).into(),
@@ -1387,29 +1386,6 @@ impl<'source> Heading<'source> {
             id,
             classes,
             attrs,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum HeadingLevel {
-    H1,
-    H2,
-    H3,
-    H4,
-    H5,
-    H6,
-}
-
-impl From<pulldown_cmark::HeadingLevel> for HeadingLevel {
-    fn from(value: pulldown_cmark::HeadingLevel) -> Self {
-        match value {
-            pulldown_cmark::HeadingLevel::H1 => Self::H1,
-            pulldown_cmark::HeadingLevel::H2 => Self::H2,
-            pulldown_cmark::HeadingLevel::H3 => Self::H3,
-            pulldown_cmark::HeadingLevel::H4 => Self::H4,
-            pulldown_cmark::HeadingLevel::H5 => Self::H5,
-            pulldown_cmark::HeadingLevel::H6 => Self::H6,
         }
     }
 }
