@@ -1,5 +1,7 @@
 mod changelog;
+mod node_ext;
 mod parser;
+mod releases;
 
 pub use crate::parse::parser::ParseError;
 pub use changelog::Changelog;

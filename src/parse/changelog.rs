@@ -2,10 +2,13 @@ use std::ops::Range;
 
 use changelog_ast::{CowStr, HeadingLevel, Node};
 
+use crate::parse::releases::Releases;
+
 // TODO: implement ToOwned
 #[derive(Debug, Clone, PartialEq)]
 pub struct Changelog<'source> {
     pub title: Option<Title<'source>>,
+    pub releases: Releases,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,9 +39,6 @@ pub struct TitleHeading<'source> {
 
 impl<'source> TitleHeading<'source> {
     pub fn is_title_heading(node: &Node<'_>) -> bool {
-        matches!(            node,
-
-            Node::Heading(heading) if heading.level == HeadingLevel::H1
-        )
+        matches!(node, Node::Heading(heading) if heading.level == HeadingLevel::H1)
     }
 }

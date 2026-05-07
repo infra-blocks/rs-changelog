@@ -2,19 +2,29 @@ use std::{collections::VecDeque, error::Error, fmt::Display};
 
 use changelog_ast::{AstIterator, Node};
 
-use crate::parse::changelog::{Changelog, Title, TitleHeading};
+use crate::parse::{
+    changelog::{Changelog, Title, TitleHeading},
+    releases::{Releases, ReleasesParseError},
+};
 
 // TODO: could try to just reverse the vec if the parsing always goes in the same direction instead.
 pub(crate) type Unparsed<'source> = VecDeque<Node<'source>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
-    Title(ParseTitleError),
+    InvalidTitle(ParseTitleError),
+    InvalidReleases(ReleasesParseError),
 }
 
 impl From<ParseTitleError> for ParseError {
     fn from(err: ParseTitleError) -> Self {
-        ParseError::Title(err)
+        ParseError::InvalidTitle(err)
+    }
+}
+
+impl From<ReleasesParseError> for ParseError {
+    fn from(value: ReleasesParseError) -> Self {
+        Self::InvalidReleases(value)
     }
 }
 
@@ -22,8 +32,10 @@ impl Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "error while parsing changelog: ",)?;
 
+        // TODO: finish this gooooood.
         match self {
-            ParseError::Title(err) => write!(f, "{}", err),
+            ParseError::InvalidTitle(err) => write!(f, "{}", err),
+            ParseError::InvalidReleases(err) => write!(f, "{:?}", err),
         }
     }
 }
@@ -61,10 +73,12 @@ impl ChangelogParser {
         // This might not be addressed on the type itself because, unlike Changelog,
         // the function might not produce a title.
         let title = self.parse_title(&mut unparsed)?;
+        let releases = Releases::parse(&mut unparsed)?;
 
-        Ok(Changelog { title })
+        Ok(Changelog { title, releases })
     }
 
+    // TODO: Title::parse
     pub(crate) fn parse_title<'source>(
         &self,
         unparsed: &mut Unparsed<'source>,

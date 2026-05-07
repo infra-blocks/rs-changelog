@@ -1351,12 +1351,12 @@ impl<'source> FootnoteDefinition<'source> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Heading<'source> {
     pub range: Range<usize>,
+    pub children: Vec<Node<'source>>,
     pub level: HeadingLevel,
     pub id: Option<CowStr<'source>>,
     pub classes: Vec<CowStr<'source>>,
     /// The first item of the tuple is the attr and second one the value.
     pub attrs: Vec<(CowStr<'source>, Option<CowStr<'source>>)>,
-    pub children: Vec<Node<'source>>,
 }
 
 impl<'source> Heading<'source> {
