@@ -5,7 +5,7 @@ use changelog_ast::{AstIterator, HeadingLevel, Node};
 use crate::parse::{
     changelog::{Changelog, Title, TitleHeading},
     node_ext::NodeExt,
-    releases::{Releases, ReleasesParseError},
+    releases::{ChangesParseError, Releases, ReleasesParseError, Unreleased, UnreleasedParseError},
 };
 
 // TODO: could try to just reverse the vec if the parsing always goes in the same direction instead.
@@ -14,6 +14,9 @@ pub(crate) type Unparsed<'source> = VecDeque<Node<'source>>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     InvalidTitle(TitleParseError),
+    // The unreleased parsing can only fail for invalid changes. An invalid heading simply
+    // moves on to the releases parsing.
+    InvalidUnreleased(ChangesParseError),
     InvalidReleases(ReleasesParseError),
 }
 
@@ -36,6 +39,7 @@ impl Display for ParseError {
         // TODO: finish this gooooood.
         match self {
             ParseError::InvalidTitle(err) => write!(f, "{}", err),
+            ParseError::InvalidUnreleased(err) => write!(f, "{:?}", err),
             ParseError::InvalidReleases(err) => write!(f, "{:?}", err),
         }
     }
@@ -81,9 +85,22 @@ impl ChangelogParser {
         // This might not be addressed on the type itself because, unlike Changelog,
         // the function might not produce a title.
         let title = self.parse_title(&mut unparsed)?;
+        let unreleased = match Unreleased::parse(&mut unparsed) {
+            Ok(unreleased) => Some(unreleased),
+            Err(err) => match err {
+                UnreleasedParseError::InvalidHeading(_) => None,
+                UnreleasedParseError::InvalidChanges(err) => {
+                    return Err(ParseError::InvalidUnreleased(err));
+                }
+            },
+        };
         let releases = Releases::parse(&mut unparsed)?;
 
-        Ok(Changelog { title, releases })
+        Ok(Changelog {
+            title,
+            unreleased,
+            releases,
+        })
     }
 
     // TODO: Title::parse

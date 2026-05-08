@@ -2,15 +2,19 @@ use std::ops::Range;
 
 use changelog_ast::Node;
 
-use crate::parse::releases::Releases;
+use crate::parse::releases::{Releases, Unreleased};
 
 // TODO: implement ToOwned
 #[derive(Debug, Clone, PartialEq)]
 pub struct Changelog<'source> {
     pub title: Title<'source>,
+    /// The unreleased section of a document is optional, as it would basically become empty
+    /// after each release. So, whether the user decides to have one or not, is up to them.
+    pub unreleased: Option<Unreleased>,
     pub releases: Releases,
 }
 
+// TODO: move into its own fucking file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Title<'source> {
     // TODO: maybe would be more useful to have a single HeadingNode with the event & range & children
