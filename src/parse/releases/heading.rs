@@ -27,7 +27,6 @@ impl ReleaseHeading {
             return Err(ReleaseHeadingParseError::Empty);
         };
 
-        // TODO: have to check the children
         let info = match first {
             Node::Heading(Heading {
                 range: _,
@@ -37,7 +36,11 @@ impl ReleaseHeading {
                 classes: _,
                 attrs: _,
             }) => ReleaseInfo::parse(children)?,
-            _ => return Err(ReleaseHeadingParseError::InvalidHeading),
+            _ => {
+                return Err(ReleaseHeadingParseError::InvalidHeading(
+                    first.range().clone(),
+                ));
+            }
         };
         let first = ast.pop_front().unwrap().unwrap_heading();
         Ok(ReleaseHeading::new(first.range, info))
@@ -48,17 +51,13 @@ impl ReleaseHeading {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseHeadingParseError {
     Empty,
-    InvalidHeading,
-    BrokenLink,
-    InvalidFormat,
+    InvalidHeading(Range<usize>),
+    InvalidReleaseInfo(ReleaseInfoParseError),
 }
 
 impl From<ReleaseInfoParseError> for ReleaseHeadingParseError {
     fn from(value: ReleaseInfoParseError) -> Self {
-        match value {
-            ReleaseInfoParseError::BrokenLink => ReleaseHeadingParseError::BrokenLink,
-            ReleaseInfoParseError::InvalidFormat => ReleaseHeadingParseError::InvalidFormat,
-        }
+        Self::InvalidReleaseInfo(value)
     }
 }
 
@@ -79,7 +78,7 @@ mod test {
         fn should_error_with_invalid_heading() {
             let mut ast: VecDeque<_> = AstIterator::new("# [0.1.0] - 2024-05-01\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0").collect();
             let result = ReleaseHeading::parse(&mut ast);
-            assert_eq!(result, Err(ReleaseHeadingParseError::InvalidHeading))
+            assert_eq!(result, Err(ReleaseHeadingParseError::InvalidHeading(0..23)))
         }
 
         #[test]

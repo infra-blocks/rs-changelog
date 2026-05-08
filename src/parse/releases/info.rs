@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use changelog_ast::{Link, Node, Text};
 use chrono::NaiveDate;
 use pulldown_cmark::LinkType;
@@ -7,8 +9,23 @@ use crate::parse::node_ext::NodeExt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseInfoParseError {
-    BrokenLink,
-    InvalidFormat,
+    Empty,
+    BrokenLink(Range<usize>),
+    InvalidNodes(Range<usize>),
+    InvalidVersion(VersionParseError),
+    InvalidDate(DateParseError),
+}
+
+impl From<VersionParseError> for ReleaseInfoParseError {
+    fn from(value: VersionParseError) -> Self {
+        Self::InvalidVersion(value)
+    }
+}
+
+impl From<DateParseError> for ReleaseInfoParseError {
+    fn from(value: DateParseError) -> Self {
+        Self::InvalidDate(value)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,14 +43,15 @@ impl ReleaseInfo {
         // Those are expected to be the children of the title heading.
         nodes: &[Node<'source>],
     ) -> Result<Self, ReleaseInfoParseError> {
-        // dbg!(&nodes);
+        if nodes.len() < 2 {
+            return Err(ReleaseInfoParseError::Empty);
+        }
 
         // When the version is properly linked, the heading should have 2 children: a link and a text
         // event with the date following.
-        if nodes.len() == 2
-            && let Ok(version) = Self::parse_version(&nodes[0])
-            && let Ok(date) = Self::parse_date(&nodes[1])
-        {
+        if nodes.len() == 2 {
+            let version = Self::parse_version(&nodes[0])?;
+            let date = Self::parse_date(&nodes[1])?;
             return Ok(Self::new(version, date));
         }
 
@@ -73,10 +91,14 @@ impl ReleaseInfo {
         //         },
         //     ),
         if nodes.len() >= 3 && nodes[0].is_text_equals("[") && nodes[2].is_text_equals("]") {
-            return Err(ReleaseInfoParseError::BrokenLink);
+            return Err(ReleaseInfoParseError::BrokenLink(
+                nodes[0].range().start..nodes[2].range().end,
+            ));
         }
 
-        Err(ReleaseInfoParseError::InvalidFormat)
+        Err(ReleaseInfoParseError::InvalidNodes(
+            nodes[0].range().start..nodes[nodes.len() - 1].range().end,
+        ))
     }
 
     fn parse_version<'source>(node: &Node<'source>) -> Result<Version, VersionParseError> {
@@ -123,8 +145,9 @@ impl ReleaseInfo {
                 id,
                 link_type: LinkType::Shortcut,
                 title: _,
-            }) => Ok(Version::parse(id)?),
-            _ => Err(VersionParseError::InvalidNode),
+            }) => Ok(Version::parse(id)
+                .map_err(|_| VersionParseError::InvalidSemver(node.range().clone()))?),
+            _ => Err(VersionParseError::InvalidNode(node.range().clone())),
         }
     }
 
@@ -139,36 +162,27 @@ impl ReleaseInfo {
         //     },
         // ),
         match node {
-            Node::Text(Text { range: _, text }) => {
-                Ok(NaiveDate::parse_from_str(text, " - %Y-%m-%d")?)
-            }
-            _ => Err(DateParseError::InvalidNode),
+            Node::Text(Text { range, text }) => Ok(NaiveDate::parse_from_str(text, " - %Y-%m-%d")
+                .map_err(|_| DateParseError::InvalidFormat(range.clone()))?),
+            _ => Err(DateParseError::InvalidNode(node.range().clone())),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VersionParseError {
-    InvalidNode,
-    InvalidSemver,
-}
-
-impl From<semver::Error> for VersionParseError {
-    fn from(_: semver::Error) -> Self {
-        Self::InvalidSemver
-    }
+    /// Happens when the provided node does not match the expected markdown node kind.
+    InvalidNode(Range<usize>),
+    /// Happens when the textual content of the node cannot be parsed into a valid [semver::Version]
+    InvalidSemver(Range<usize>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DateParseError {
-    InvalidNode,
-    InvalidFormat,
-}
-
-impl From<chrono::ParseError> for DateParseError {
-    fn from(_: chrono::ParseError) -> Self {
-        Self::InvalidFormat
-    }
+    /// Happens when the provided node does not match the expected markdown node kind.
+    InvalidNode(Range<usize>),
+    /// Happens when the textual content cannot be parsed into a date as it does not match expectations.
+    InvalidFormat(Range<usize>),
 }
 
 #[cfg(test)]
@@ -181,6 +195,13 @@ mod test {
         use super::*;
 
         #[test]
+        fn should_error_with_empty_string() {
+            let nodes: Vec<_> = AstIterator::new("").collect();
+            let result = ReleaseInfo::parse(&nodes);
+            assert_eq!(result, Err(ReleaseInfoParseError::Empty));
+        }
+
+        #[test]
         fn should_error_with_broken_link() {
             let mut nodes: Vec<_> = AstIterator::new("[0.1.0] - 2024-05-01").collect();
             // We expect a single top-level paragraph node that has the children we are
@@ -188,7 +209,7 @@ mod test {
             assert!(nodes.len() == 1);
             let paragraph = nodes.pop().unwrap().unwrap_paragraph();
             let result = ReleaseInfo::parse(&paragraph.children);
-            assert_eq!(result, Err(ReleaseInfoParseError::BrokenLink));
+            assert_eq!(result, Err(ReleaseInfoParseError::BrokenLink(0..7)));
         }
 
         #[test]
@@ -200,7 +221,12 @@ mod test {
             assert!(nodes.len() == 1);
             let paragraph = nodes.pop().unwrap().unwrap_paragraph();
             let result = ReleaseInfo::parse(&paragraph.children);
-            assert_eq!(result, Err(ReleaseInfoParseError::InvalidFormat));
+            assert_eq!(
+                result,
+                Err(ReleaseInfoParseError::InvalidVersion(
+                    VersionParseError::InvalidSemver(0..13)
+                ))
+            );
         }
 
         #[test]
@@ -212,7 +238,12 @@ mod test {
             assert!(nodes.len() == 1);
             let paragraph = nodes.pop().unwrap().unwrap_paragraph();
             let result = ReleaseInfo::parse(&paragraph.children);
-            assert_eq!(result, Err(ReleaseInfoParseError::InvalidFormat));
+            assert_eq!(
+                result,
+                Err(ReleaseInfoParseError::InvalidDate(
+                    DateParseError::InvalidFormat(7..20)
+                ))
+            );
         }
 
         #[test]

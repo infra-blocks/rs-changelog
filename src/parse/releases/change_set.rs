@@ -190,11 +190,17 @@ mod change_set_kind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeSetParseError {
+    /// This error happens when the parsing process runs out of nodes to inspect, but
+    /// is still expecting some to produce a coherent result.
     Empty,
-    // TODO: put some ranges on these bitches.
-    InvalidHeading,
-    // When the content of the header does not match our expectations.
-    InvalidHeader,
+    /// When the expecting heading node is improper. For example, when it
+    /// is not a markdown heading, or when the level is not the expected one.
+    InvalidHeading(Range<usize>),
+    /// When the content of the header does not match our expectations.
+    ///
+    /// This happens when it doesn't match one of the known strings identifying
+    /// the change set kind. See [ChangeSetKind].
+    InvalidHeader(Range<usize>),
     InvalidItem(Range<usize>),
     InvalidChangesList(Range<usize>),
 }
@@ -230,17 +236,17 @@ impl ChangeSet {
 
         // Checking the heading level validity.
         if !first.is_heading_of_level(HeadingLevel::H3) {
-            return Err(ChangeSetParseError::InvalidHeading);
+            return Err(ChangeSetParseError::InvalidHeading(first.range().clone()));
         }
 
         let kind = match first {
             Node::Heading(h) if h.children.len() == 1 => {
                 match ChangeSetKind::try_from(&h.children[0]) {
                     Ok(kind) => kind,
-                    Err(_) => return Err(ChangeSetParseError::InvalidHeader),
+                    Err(_) => return Err(ChangeSetParseError::InvalidHeader(h.range.clone())),
                 }
             }
-            _ => return Err(ChangeSetParseError::InvalidHeading),
+            _ => return Err(ChangeSetParseError::InvalidHeading(first.range().clone())),
         };
 
         // Now that we know the heading is good, we're looking into the next node,
