@@ -5,6 +5,7 @@ use crate::parse::{
     releases::change_set::{ChangeSet, ChangeSetKind, ChangeSetParseError},
 };
 
+// TODO: wrap the *OPTION* in new type instead of the inner for clarity.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Changes {
     added: Option<Added>,
@@ -159,6 +160,42 @@ impl Changes {
     }
 }
 
+impl From<Added> for Changes {
+    fn from(value: Added) -> Self {
+        Changes::new(Some(value), None, None, None, None, None)
+    }
+}
+
+impl From<Changed> for Changes {
+    fn from(value: Changed) -> Self {
+        Changes::new(None, Some(value), None, None, None, None)
+    }
+}
+
+impl From<Deprecated> for Changes {
+    fn from(value: Deprecated) -> Self {
+        Changes::new(None, None, Some(value), None, None, None)
+    }
+}
+
+impl From<Removed> for Changes {
+    fn from(value: Removed) -> Self {
+        Changes::new(None, None, None, Some(value), None, None)
+    }
+}
+
+impl From<Fixed> for Changes {
+    fn from(value: Fixed) -> Self {
+        Changes::new(None, None, None, None, Some(value), None)
+    }
+}
+
+impl From<Security> for Changes {
+    fn from(value: Security) -> Self {
+        Changes::new(None, None, None, None, None, Some(value))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangesParseError {
     InvalidChangeSet(ChangeSetParseError),
@@ -178,20 +215,56 @@ impl From<ChangeSetParseError> for ChangesParseError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Added(ChangeSet);
 
+impl From<ChangeSet> for Added {
+    fn from(value: ChangeSet) -> Self {
+        Added(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Changed(ChangeSet);
+
+impl From<ChangeSet> for Changed {
+    fn from(value: ChangeSet) -> Self {
+        Changed(value)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Deprecated(ChangeSet);
 
+impl From<ChangeSet> for Deprecated {
+    fn from(value: ChangeSet) -> Self {
+        Deprecated(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Removed(ChangeSet);
+
+impl From<ChangeSet> for Removed {
+    fn from(value: ChangeSet) -> Self {
+        Removed(value)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fixed(ChangeSet);
 
+impl From<ChangeSet> for Fixed {
+    fn from(value: ChangeSet) -> Self {
+        Fixed(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Security(ChangeSet);
+
+impl From<ChangeSet> for Security {
+    fn from(value: ChangeSet) -> Self {
+        Security(value)
+    }
+}
 
 #[cfg(test)]
 mod test {

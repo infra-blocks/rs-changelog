@@ -7,6 +7,7 @@ use crate::parse::{
     releases::{ReleaseInfo, ReleaseInfoParseError},
 };
 
+// TODO: rename file as we now have a unreleased heading mafock.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseHeading {
     range: Range<usize>,

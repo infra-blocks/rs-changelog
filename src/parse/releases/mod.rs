@@ -3,22 +3,21 @@ mod changes;
 mod heading;
 mod info;
 mod release;
+mod unreleased;
 
 pub use changes::*;
 pub use heading::*;
 pub use info::*;
+pub use unreleased::*;
 
 use crate::parse::{
     parser::Unparsed,
     releases::release::{Release, ReleaseParseError},
 };
 
-// TODO: find a better name?
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Releases {
-    // TODO: this should optional, some packages deploy every change.
-    // TODO: move the unreleased stuff up one level?
-    // unreleased: Unreleased,
+    // TODO: move the logic into Changelog
     releases: Vec<Release>,
 }
 
