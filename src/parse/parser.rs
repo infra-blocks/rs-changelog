@@ -1,9 +1,10 @@
-use std::{collections::VecDeque, error::Error, fmt::Display};
+use std::{collections::VecDeque, error::Error, fmt::Display, ops::Range};
 
-use changelog_ast::{AstIterator, Node};
+use changelog_ast::{AstIterator, HeadingLevel, Node};
 
 use crate::parse::{
     changelog::{Changelog, Title, TitleHeading},
+    node_ext::NodeExt,
     releases::{Releases, ReleasesParseError},
 };
 
@@ -12,12 +13,12 @@ pub(crate) type Unparsed<'source> = VecDeque<Node<'source>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
-    InvalidTitle(ParseTitleError),
+    InvalidTitle(TitleParseError),
     InvalidReleases(ReleasesParseError),
 }
 
-impl From<ParseTitleError> for ParseError {
-    fn from(err: ParseTitleError) -> Self {
+impl From<TitleParseError> for ParseError {
+    fn from(err: TitleParseError) -> Self {
         ParseError::InvalidTitle(err)
     }
 }
@@ -43,21 +44,28 @@ impl Display for ParseError {
 impl Error for ParseError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseTitleError {
-    InvalidHeading,
+pub enum TitleParseError {
+    /// Happens when not enough nodes are present to successfully parse an item.
+    Empty,
+    /// Happens when the markdown node received does not match expectations.
+    ///
+    /// It could happen because it is not a [Node::Heading], or because its
+    /// [HeadingLevel] is not 1.
+    InvalidNode(Range<usize>),
     MissingContent,
 }
 
-impl Display for ParseTitleError {
+impl Display for TitleParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParseTitleError::InvalidHeading => write!(f, "invalid heading"),
-            ParseTitleError::MissingContent => write!(f, "missing content"),
+            TitleParseError::Empty => write!(f, "node nodes to parse"),
+            TitleParseError::InvalidNode(_) => write!(f, "invalid heading"),
+            TitleParseError::MissingContent => write!(f, "missing content"),
         }
     }
 }
 
-impl Error for ParseTitleError {}
+impl Error for TitleParseError {}
 
 pub struct ChangelogParser {}
 
@@ -81,52 +89,47 @@ impl ChangelogParser {
     // TODO: Title::parse
     pub(crate) fn parse_title<'source>(
         &self,
-        unparsed: &mut Unparsed<'source>,
-    ) -> Result<Option<Title<'source>>, ParseTitleError> {
+        ast: &mut Unparsed<'source>,
+    ) -> Result<Title<'source>, TitleParseError> {
         // The first node must match the title heading node.
-        let title_heading = self
-            .parse_title_heading(unparsed)
-            .ok_or(ParseTitleError::InvalidHeading)?;
-        let text_nodes = self.parse_title_text(unparsed);
-        if text_nodes.is_empty() {
-            Err(ParseTitleError::MissingContent)
-        } else {
-            Ok(Some(Title::new(title_heading, text_nodes)))
-        }
+        let title_heading = self.parse_title_heading(ast)?;
+        let text_nodes = self.parse_title_text(ast)?;
+        Ok(Title::new(title_heading, text_nodes))
     }
 
     pub(crate) fn parse_title_heading<'source>(
         &self,
-        unparsed: &mut Unparsed<'source>,
-    ) -> Option<TitleHeading<'source>> {
-        unparsed
-            .pop_front_if(|node| TitleHeading::is_title_heading(node))
-            // TODO: if the enum variants included the children and range directly, it would be easier
-            // to convert through a TryFrom, for example.
-            .map(|node| {
-                let heading = node.unwrap_heading();
-                TitleHeading {
-                    children: heading.children,
-                    range: heading.range,
-                    id: heading.id,
-                    classes: heading.classes,
-                    attrs: heading.attrs,
-                }
-            })
+        ast: &mut Unparsed<'source>,
+    ) -> Result<TitleHeading<'source>, TitleParseError> {
+        let Some(first) = ast.front() else {
+            return Err(TitleParseError::Empty);
+        };
+
+        if !first.is_heading_of_level(HeadingLevel::H1) {
+            return Err(TitleParseError::InvalidNode(first.range().clone()));
+        }
+
+        // Safe to pop at this point.
+        let heading = ast.pop_front().unwrap().unwrap_heading();
+        Ok(TitleHeading::new(heading.range, heading.children))
     }
 
-    // TODO: no need to be on &self
     pub(crate) fn parse_title_text<'source>(
         &self,
-        unparsed: &mut Unparsed<'source>,
-    ) -> Vec<Node<'source>> {
+        ast: &mut Unparsed<'source>,
+    ) -> Result<Vec<Node<'source>>, TitleParseError> {
         let mut result = vec![];
-        while let Some(node) = unparsed.front()
+        while let Some(node) = ast.front()
             && !node.is_heading()
         {
-            result.push(unparsed.pop_front().unwrap())
+            result.push(ast.pop_front().unwrap())
         }
-        result
+
+        if result.is_empty() {
+            Err(TitleParseError::MissingContent)
+        } else {
+            Ok(result)
+        }
     }
 }
 
@@ -137,79 +140,69 @@ pub(crate) mod test {
     mod parse_title {
         use super::*;
 
-        mod heading_and_text_rule {
-            use changelog_ast::{CowStr, Paragraph, Text};
+        use changelog_ast::{CowStr, Paragraph, Text};
 
-            use super::*;
-
-            macro_rules! assert_fails {
-                ($source:expr, $error:expr) => {
-                    let mut unparsed: VecDeque<_> = AstIterator::new($source).collect();
-                    // TODO: TitleParser struct?
-                    let parser = ChangelogParser::new();
-                    let result = parser.parse_title(&mut unparsed);
-                    assert_eq!(result, Err($error));
-                };
-            }
-
-            #[test]
-            fn should_error_for_empty_string() {
-                assert_fails!("", ParseTitleError::InvalidHeading);
-            }
-
-            #[test]
-            fn should_error_for_missing_heading() {
-                assert_fails!(
-                    "Just some text without the foreplay of the heading.",
-                    ParseTitleError::InvalidHeading
-                );
-            }
-
-            #[test]
-            fn should_error_for_invalid_heading_size() {
-                assert_fails!(
-                    "## Changelog with invalid heading",
-                    ParseTitleError::InvalidHeading
-                );
-            }
-
-            #[test]
-            fn should_error_for_missing_text_until_next_heading() {
-                assert_fails!(
-                    "# Changelog\n\n## Unreleased",
-                    ParseTitleError::MissingContent
-                );
-            }
-
-            #[test]
-            fn should_succeed_for_a_valid_heading_and_one_paragraph() {
-                let mut unparsed: VecDeque<_> =
-                    AstIterator::new("# Changelog\nIpsum lorem stfu etc...").collect();
+        macro_rules! assert_fails {
+            ($source:expr, $error:expr) => {
+                let mut unparsed: VecDeque<_> = AstIterator::new($source).collect();
+                // TODO: TitleParser struct?
                 let parser = ChangelogParser::new();
                 let result = parser.parse_title(&mut unparsed);
-                assert_eq!(
-                    result,
-                    Ok(Some(Title::new(
-                        TitleHeading {
-                            children: vec![Node::Text(Text::new(
-                                2..11,
-                                CowStr::Borrowed("Changelog")
-                            ))],
-                            range: 0..12,
-                            id: None,
-                            classes: Default::default(),
-                            attrs: Default::default()
-                        },
-                        vec![Node::Paragraph(Paragraph::new(
+                assert_eq!(result, Err($error));
+            };
+        }
+
+        #[test]
+        fn should_error_for_empty_string() {
+            assert_fails!("", TitleParseError::Empty);
+        }
+
+        #[test]
+        fn should_error_for_missing_heading() {
+            assert_fails!(
+                "Just some text without the foreplay of the heading.",
+                TitleParseError::InvalidNode(0..51)
+            );
+        }
+
+        #[test]
+        fn should_error_for_invalid_heading_size() {
+            assert_fails!(
+                "## Changelog with invalid heading",
+                TitleParseError::InvalidNode(0..33)
+            );
+        }
+
+        #[test]
+        fn should_error_for_missing_text_until_next_heading() {
+            assert_fails!(
+                "# Changelog\n\n## Unreleased",
+                TitleParseError::MissingContent
+            );
+        }
+
+        #[test]
+        fn should_succeed_for_a_valid_heading_and_one_paragraph() {
+            let mut unparsed: VecDeque<_> =
+                AstIterator::new("# Changelog\nIpsum lorem stfu etc...").collect();
+            let parser = ChangelogParser::new();
+            let result = parser.parse_title(&mut unparsed);
+            assert_eq!(
+                result,
+                Ok(Title::new(
+                    TitleHeading {
+                        children: vec![Node::Text(Text::new(2..11, CowStr::Borrowed("Changelog")))],
+                        range: 0..12,
+                    },
+                    vec![Node::Paragraph(Paragraph::new(
+                        12..35,
+                        vec![Node::Text(Text::new(
                             12..35,
-                            vec![Node::Text(Text::new(
-                                12..35,
-                                CowStr::Borrowed("Ipsum lorem stfu etc...")
-                            ))],
+                            CowStr::Borrowed("Ipsum lorem stfu etc...")
                         ))],
-                    )))
-                );
-            }
+                    ))],
+                ))
+            );
         }
     }
 }

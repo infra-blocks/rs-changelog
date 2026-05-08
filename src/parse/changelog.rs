@@ -1,13 +1,13 @@
 use std::ops::Range;
 
-use changelog_ast::{CowStr, HeadingLevel, Node};
+use changelog_ast::Node;
 
 use crate::parse::releases::Releases;
 
 // TODO: implement ToOwned
 #[derive(Debug, Clone, PartialEq)]
 pub struct Changelog<'source> {
-    pub title: Option<Title<'source>>,
+    pub title: Title<'source>,
     pub releases: Releases,
 }
 
@@ -30,15 +30,10 @@ impl<'source> Title<'source> {
 pub struct TitleHeading<'source> {
     pub children: Vec<Node<'source>>,
     pub range: Range<usize>,
-    // TODO: investigate if those fields are relevant, useful in the context of changelog parsing.
-    pub id: Option<CowStr<'source>>,
-    pub classes: Vec<CowStr<'source>>,
-    /// The first item of the tuple is the attr and second one the value.
-    pub attrs: Vec<(CowStr<'source>, Option<CowStr<'source>>)>,
 }
 
 impl<'source> TitleHeading<'source> {
-    pub fn is_title_heading(node: &Node<'_>) -> bool {
-        matches!(node, Node::Heading(heading) if heading.level == HeadingLevel::H1)
+    pub fn new(range: Range<usize>, children: Vec<Node<'source>>) -> Self {
+        Self { range, children }
     }
 }
