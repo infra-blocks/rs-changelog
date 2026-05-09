@@ -1,5 +1,5 @@
 use crate::parse::{
-    parser::Unparsed,
+    ast::Ast,
     releases::{Changes, ChangesParseError, ReleaseHeading, ReleaseHeadingParseError},
 };
 
@@ -15,7 +15,7 @@ impl Release {
         Self { heading, changes }
     }
 
-    pub fn parse(ast: &mut Unparsed) -> Result<Self, ReleaseParseError> {
+    pub fn parse(ast: &mut Ast) -> Result<Self, ReleaseParseError> {
         let heading = ReleaseHeading::parse(ast)?;
         let changes = Changes::parse(ast)?;
 

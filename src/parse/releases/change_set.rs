@@ -5,7 +5,7 @@ pub use change_set_kind::*;
 
 use changelog_ast::{HeadingLevel, Node};
 
-use crate::parse::{node_ext::NodeExt, parser::Unparsed};
+use crate::parse::{ast::Ast, node_ext::NodeExt};
 
 mod change {
     use std::ops::Range;
@@ -227,7 +227,7 @@ impl ChangeSet {
         Range { start, end }
     }
 
-    pub(crate) fn parse(ast: &mut Unparsed) -> Result<(ChangeSetKind, Self), ChangeSetParseError> {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<(ChangeSetKind, Self), ChangeSetParseError> {
         // The first node should be a heading of level 3, and its inner text should equal
         // "Added" verbatim.
         let Some(first) = ast.front() else {

@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::parse::{
-    parser::Unparsed,
+    ast::Ast,
     releases::change_set::{ChangeSet, ChangeSetKind, ChangeSetParseError},
 };
 
@@ -41,6 +41,7 @@ impl Changes {
     }
 
     /// Returns the range covering the whole set of changes.
+    #[allow(dead_code)]
     pub fn range(&self) -> Range<usize> {
         let mut start = usize::MAX;
         let mut end = usize::MIN;
@@ -75,7 +76,7 @@ impl Changes {
         Range { start, end }
     }
 
-    pub(crate) fn parse(ast: &mut Unparsed) -> Result<Self, ChangesParseError> {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ChangesParseError> {
         let mut added: Option<Added> = None;
         let mut changed: Option<Changed> = None;
         let mut deprecated: Option<Deprecated> = None;

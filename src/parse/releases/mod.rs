@@ -11,7 +11,7 @@ pub use info::*;
 pub use unreleased::*;
 
 use crate::parse::{
-    parser::Unparsed,
+    ast::Ast,
     releases::release::{Release, ReleaseParseError},
 };
 
@@ -26,7 +26,7 @@ impl Releases {
         Self { releases }
     }
 
-    pub(crate) fn parse(ast: &mut Unparsed) -> Result<Self, ReleasesParseError> {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ReleasesParseError> {
         // TODO: parse unreleased
 
         let mut releases = vec![];

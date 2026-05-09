@@ -1,7 +1,8 @@
 use std::{error::Error, fmt::Display, ops::Range};
 
-use crate::parse::parser::Unparsed;
 pub use heading::*;
+
+use crate::parse::ast::Ast;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Title {
@@ -14,7 +15,7 @@ impl Title {
         Self { heading, text }
     }
 
-    pub(crate) fn parse(ast: &mut Unparsed) -> Result<Self, TitleParseError> {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, TitleParseError> {
         let heading = TitleHeading::parse(ast)?;
 
         let mut text_start = usize::MAX;
@@ -111,7 +112,7 @@ mod heading {
 
     use changelog_ast::{HeadingLevel, Node};
 
-    use crate::parse::{node_ext::NodeExt, parser::Unparsed};
+    use crate::parse::{ast::Ast, node_ext::NodeExt};
 
     // This is guaranteed to be a heading of level 1.
     #[derive(Debug, Clone, PartialEq)]
@@ -124,7 +125,7 @@ mod heading {
             Self { range }
         }
 
-        pub(crate) fn parse(ast: &mut Unparsed) -> Result<Self, TitleHeadingParseError> {
+        pub(crate) fn parse(ast: &mut Ast) -> Result<Self, TitleHeadingParseError> {
             let Some(first) = ast.front() else {
                 return Err(TitleHeadingParseError::Empty);
             };
