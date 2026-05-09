@@ -279,15 +279,9 @@ impl ChangeSet {
 mod test {
     use super::*;
 
-    use std::collections::VecDeque;
-
-    use changelog_ast::AstIterator;
-
     #[test]
     fn should_work_for_a_valid_added_change_set() {
-        // TODO: make that fucking data struct already!!!!
-        let mut ast: VecDeque<_> =
-            AstIterator::new("### Added\n\n- Some sheeet\n- Big sheet").collect();
+        let mut ast = Ast::from("### Added\n\n- Some sheeet\n- Big sheet");
         assert_eq!(
             ChangeSet::parse(&mut ast),
             Ok((

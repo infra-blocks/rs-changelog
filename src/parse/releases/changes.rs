@@ -269,24 +269,18 @@ impl From<ChangeSet> for Security {
 
 #[cfg(test)]
 mod test {
-    use std::collections::VecDeque;
-
-    use changelog_ast::AstIterator;
-
     use crate::parse::releases::change_set::Change;
 
     use super::*;
 
     #[test]
     fn should_error_with_duplicate_change_set() {
-        // TODO: AST struct bro
-        let mut ast: VecDeque<_> = AstIterator::new(
+        let mut ast = Ast::from(
             r"### Added
 - stuff
 ### Added
 - same stuff again. So good.",
-        )
-        .collect();
+        );
         let result = Changes::parse(&mut ast);
         assert_eq!(
             result,
@@ -300,7 +294,7 @@ mod test {
 
     #[test]
     fn should_work_with_all_6() {
-        let mut ast: VecDeque<_> = AstIterator::new(
+        let mut ast = Ast::from(
             r"### Added
 - the stuff you don't want
 ### Changed
@@ -314,8 +308,7 @@ mod test {
 ### Security
 - ooopsies
 ",
-        )
-        .collect();
+        );
         let result = Changes::parse(&mut ast);
         assert_eq!(
             result,

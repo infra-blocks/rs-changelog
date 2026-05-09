@@ -51,10 +51,6 @@ mod test {
     use super::*;
 
     mod parse {
-        use std::collections::VecDeque;
-
-        use changelog_ast::AstIterator;
-
         use crate::parse::releases::{
             Changed,
             change_set::{Change, ChangeSet, ChangeSetParseError},
@@ -67,10 +63,9 @@ mod test {
         // basic tests.
         #[test]
         fn should_error_for_invalid_heading() {
-            let mut ast: VecDeque<_> = AstIterator::new(
+            let mut ast = Ast::from(
                 "## [Not Released]\n\n### Added\n- stuff\n\n[Not Released]: www.porque.pork.cunt",
-            )
-            .collect();
+            );
             let result = Unreleased::parse(&mut ast);
             assert_eq!(
                 result,
@@ -82,10 +77,9 @@ mod test {
 
         #[test]
         fn should_error_for_invalid_changes() {
-            let mut ast: VecDeque<_> = AstIterator::new(
+            let mut ast = Ast::from(
                 "## [Unreleased]\n\n### Fuckulated\n- stuff\n\n[Unreleased]: www.porque.pork.cunt",
-            )
-            .collect();
+            );
             let result = Unreleased::parse(&mut ast);
             assert_eq!(
                 result,
@@ -97,10 +91,9 @@ mod test {
 
         #[test]
         fn should_succeed_for_valid_unreleased_block() {
-            let mut ast: VecDeque<_> = AstIterator::new(
+            let mut ast = Ast::from(
                 "## [Unreleased]\n\n### Changed\n- stuff\n\n[Unreleased]: www.porque.pork.cunt",
-            )
-            .collect();
+            );
             let result = Unreleased::parse(&mut ast);
             assert_eq!(
                 result,
@@ -195,15 +188,11 @@ mod heading {
         use super::*;
 
         mod parse {
-            use std::collections::VecDeque;
-
-            use changelog_ast::AstIterator;
-
             use super::*;
 
             macro_rules! failure {
                 ($markdown:expr, $error:expr) => {
-                    let mut ast: VecDeque<_> = AstIterator::new($markdown).collect();
+                    let mut ast = Ast::from($markdown);
                     let result = UnreleasedHeading::parse(&mut ast);
                     assert_eq!(result, Err($error));
                 };
@@ -248,10 +237,9 @@ mod heading {
 
             #[test]
             fn should_work_for_valid_markdown() {
-                let mut ast: VecDeque<_> = AstIterator::new(
+                let mut ast = Ast::from(
                     "## [Unreleased]\n\n[Unreleased]: https://www.stfu.com/you-feel?answer=yes",
-                )
-                .collect();
+                );
                 let result = UnreleasedHeading::parse(&mut ast);
                 assert_eq!(result, Ok(UnreleasedHeading::new(0..16)));
             }
