@@ -1,6 +1,4 @@
-use std::{collections::VecDeque, error::Error, fmt::Display};
-
-use changelog_ast::AstIterator;
+use std::{error::Error, fmt::Display};
 
 use crate::parse::{
     releases::{ChangesParseError, Releases, ReleasesParseError, Unreleased, UnreleasedParseError},
@@ -34,7 +32,7 @@ impl<'source> Changelog<'source> {
     }
 
     pub fn parse(source: &'source str) -> Result<Changelog<'source>, ChangelogParseError> {
-        let mut ast: VecDeque<_> = AstIterator::new(source).collect();
+        let mut ast = Ast::from(source);
         let title = Title::parse(&mut ast)?;
         let unreleased = match Unreleased::parse(&mut ast) {
             Ok(unreleased) => Some(unreleased),

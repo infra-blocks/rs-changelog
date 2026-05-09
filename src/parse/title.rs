@@ -69,16 +69,11 @@ mod test {
     use super::*;
 
     mod parse {
-        use std::collections::VecDeque;
-
-        use changelog_ast::AstIterator;
-
         use super::*;
 
         #[test]
         fn should_error_for_invalid_heading() {
-            let mut ast: VecDeque<_> =
-                AstIterator::new("# Changestream\n\nHello. This is the changestream.").collect();
+            let mut ast = Ast::from("# Changestream\n\nHello. This is the changestream.");
             let result = Title::parse(&mut ast);
             assert_eq!(
                 result,
@@ -90,16 +85,14 @@ mod test {
 
         #[test]
         fn should_error_for_missing_content() {
-            let mut ast: VecDeque<_> = AstIterator::new("# Changelog\n\n\n").collect();
+            let mut ast = Ast::from("# Changelog\n\n\n");
             let result = Title::parse(&mut ast);
             assert_eq!(result, Err(TitleParseError::MissingContent));
         }
 
         #[test]
         fn should_work_with_valid_title() {
-            let mut ast: VecDeque<_> =
-                AstIterator::new("# Changelog\n\nIpsum lorem stfu etc...\n\nContinued bro?")
-                    .collect();
+            let mut ast = Ast::from("# Changelog\n\nIpsum lorem stfu etc...\n\nContinued bro?");
             let result = Title::parse(&mut ast);
             assert_eq!(result, Ok(Title::new(TitleHeading::new(0..12), 13..52)));
             assert!(ast.is_empty());
@@ -164,15 +157,11 @@ mod heading {
         use super::*;
 
         mod parse {
-            use std::collections::VecDeque;
-
-            use changelog_ast::AstIterator;
-
             use super::*;
 
             macro_rules! failure {
                 ($markdown:expr, $error:expr) => {
-                    let mut ast: VecDeque<_> = AstIterator::new($markdown).collect();
+                    let mut ast = Ast::from($markdown);
                     let result = TitleHeading::parse(&mut ast);
                     assert_eq!(result, Err($error));
                 };
@@ -200,7 +189,7 @@ mod heading {
 
             #[test]
             fn should_work_with_valid_title_heading() {
-                let mut ast: VecDeque<_> = AstIterator::new("# Changelog").collect();
+                let mut ast = Ast::from("# Changelog");
                 let result = TitleHeading::parse(&mut ast);
                 assert_eq!(result, Ok(TitleHeading::new(0..11)));
                 assert!(ast.is_empty());

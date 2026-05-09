@@ -22,7 +22,7 @@ impl ReleaseHeading {
 
     pub(crate) fn parse(ast: &mut Ast) -> Result<ReleaseHeading, ReleaseHeadingParseError> {
         // The first node has to be a heading.
-        let Some(first) = ast.front_mut() else {
+        let Some(first) = ast.front() else {
             return Err(ReleaseHeadingParseError::Empty);
         };
 
@@ -65,9 +65,6 @@ mod test {
     use super::*;
 
     mod parse_release_heading {
-        use std::collections::VecDeque;
-
-        use changelog_ast::AstIterator;
         use chrono::NaiveDate;
         use semver::Version;
 
@@ -75,14 +72,18 @@ mod test {
 
         #[test]
         fn should_error_with_invalid_heading() {
-            let mut ast: VecDeque<_> = AstIterator::new("# [0.1.0] - 2024-05-01\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0").collect();
+            let mut ast = Ast::from(
+                "# [0.1.0] - 2024-05-01\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0",
+            );
             let result = ReleaseHeading::parse(&mut ast);
             assert_eq!(result, Err(ReleaseHeadingParseError::InvalidHeading(0..23)))
         }
 
         #[test]
         fn should_work_with_valid_release() {
-            let mut ast: VecDeque<_> = AstIterator::new("## [0.1.0] - 2024-05-01\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0").collect();
+            let mut ast = Ast::from(
+                "## [0.1.0] - 2024-05-01\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0",
+            );
             let result = ReleaseHeading::parse(&mut ast);
             assert_eq!(
                 result,
