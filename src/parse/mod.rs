@@ -2,6 +2,7 @@ mod changelog;
 mod node_ext;
 mod parser;
 mod releases;
+mod title;
 
 pub use crate::parse::parser::ParseError;
 pub use changelog::Changelog;
