@@ -4,5 +4,6 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-pulldown-cmark = "0.13.3"
-tracing = "0.1.44"
+# A fork of version 0.13.3 with some modifications that have been submitted on the original repo,
+# awaiting review.
+pulldown-cmark = { git = "https://github.com/el-pendeloco/pulldown-cmark.git", branch = "next" }

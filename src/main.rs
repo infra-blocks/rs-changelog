@@ -37,6 +37,9 @@ fn main() -> Result<()> {
             let content = read_file(file)?;
             let tree = parse_ast(&content);
             PrettyAst::from(&tree).pretty_print().into_diagnostic()?;
+            for (key, value) in tree.reference_definitions.iter() {
+                println!("{} => {:?}: {}", key, value, &content[value.span.clone()]);
+            }
         }
         Some(("debug", args)) => {
             let file = args.get_one::<String>("file").unwrap();
