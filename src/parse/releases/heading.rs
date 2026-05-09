@@ -3,7 +3,7 @@ use std::ops::Range;
 use changelog_ast::{Heading, HeadingLevel, Node};
 
 use crate::parse::{
-    parser::Unparsed,
+    ast::Ast,
     releases::{ReleaseInfo, ReleaseInfoParseError},
 };
 
@@ -20,9 +20,7 @@ impl ReleaseHeading {
         Self { range, info }
     }
 
-    pub(crate) fn parse<'source>(
-        ast: &mut Unparsed<'source>,
-    ) -> Result<ReleaseHeading, ReleaseHeadingParseError> {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<ReleaseHeading, ReleaseHeadingParseError> {
         // The first node has to be a heading.
         let Some(first) = ast.front_mut() else {
             return Err(ReleaseHeadingParseError::Empty);

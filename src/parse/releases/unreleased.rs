@@ -1,5 +1,5 @@
 use crate::parse::{
-    parser::Unparsed,
+    ast::Ast,
     releases::{Changes, ChangesParseError},
 };
 pub use heading::*;
@@ -21,7 +21,7 @@ impl Unreleased {
         Self { heading, changes }
     }
 
-    pub(crate) fn parse(ast: &mut Unparsed) -> Result<Self, UnreleasedParseError> {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, UnreleasedParseError> {
         let heading = UnreleasedHeading::parse(ast)?;
         let changes = Changes::parse(ast)?;
         Ok(Self::new(heading, changes))
@@ -118,7 +118,7 @@ mod heading {
 
     use changelog_ast::{HeadingLevel, Node};
 
-    use crate::parse::{node_ext::NodeExt, parser::Unparsed};
+    use crate::parse::{ast::Ast, node_ext::NodeExt};
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct UnreleasedHeading {
@@ -130,7 +130,7 @@ mod heading {
             Self { range }
         }
 
-        pub(crate) fn parse(ast: &mut Unparsed) -> Result<Self, UnreleasedHeadingParseError> {
+        pub(crate) fn parse(ast: &mut Ast) -> Result<Self, UnreleasedHeadingParseError> {
             let Some(first) = ast.front() else {
                 return Err(UnreleasedHeadingParseError::Empty);
             };
