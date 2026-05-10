@@ -1,5 +1,6 @@
 use std::{error::Error, fmt::Display};
 
+use chrono::NaiveDate;
 use semver::Version;
 
 use crate::Changelog;
@@ -8,8 +9,10 @@ impl<'source> Changelog<'source> {
     pub fn lint(&self) -> Result<(), ChangelogLintError> {
         // Check ordering of releases. Could be done during parsing?
         self.lint_release_version_in_descending_order()?;
+        self.lint_release_date_in_descending_order()?;
 
-        // Check ordering of change sets. Could be done during parsing?
+        // Check ordering of change sets. Could be don
+        // e during parsing?
         // Check ordering of ref defs.
         // Check links to be of the same form.
         Ok(())
@@ -23,7 +26,7 @@ impl<'source> Changelog<'source> {
             if let Some(previous) = previous_version
                 && previous <= current
             {
-                return Err(ChangelogLintError::UnorderedReleases(
+                return Err(ChangelogLintError::UnorderedReleaseVersions(
                     previous.clone(),
                     current.clone(),
                 ));
@@ -32,19 +35,43 @@ impl<'source> Changelog<'source> {
         }
         Ok(())
     }
+
+    fn lint_release_date_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+        let releases = self.releases();
+        let mut previous_date: Option<&NaiveDate> = None;
+        for release in releases {
+            let current = release.date();
+            if let Some(previous) = previous_date
+                && previous <= current
+            {
+                return Err(ChangelogLintError::UnorderedReleaseDates(
+                    previous.clone(),
+                    current.clone(),
+                ));
+            }
+            previous_date = Some(current)
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangelogLintError {
-    UnorderedReleases(Version, Version),
+    UnorderedReleaseVersions(Version, Version),
+    UnorderedReleaseDates(NaiveDate, NaiveDate),
 }
 
 impl Display for ChangelogLintError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChangelogLintError::UnorderedReleases(first, second) => write!(
+            ChangelogLintError::UnorderedReleaseVersions(first, second) => write!(
                 f,
                 "expected release version {} to come after {} to respect descending order",
+                first, second
+            ),
+            ChangelogLintError::UnorderedReleaseDates(first, second) => write!(
+                f,
+                "expected release date {} to come after {} to respect descending order",
                 first, second
             ),
         }
@@ -86,7 +113,7 @@ This is a mfking changelog y'all.
             let result = changelog.lint();
             assert_eq!(
                 result,
-                Err(ChangelogLintError::UnorderedReleases(
+                Err(ChangelogLintError::UnorderedReleaseVersions(
                     Version::parse("0.2.0").unwrap(),
                     Version::parse("0.3.0").unwrap()
                 ))
