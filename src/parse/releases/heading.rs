@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use changelog_ast::{Heading, HeadingLevel, Node};
+use semver::Version;
 
 use crate::parse::{
     ast::Ast,
@@ -43,6 +44,10 @@ impl ReleaseHeading {
         };
         let first = ast.pop_front().unwrap().unwrap_heading();
         Ok(ReleaseHeading::new(first.range, info))
+    }
+
+    pub fn version(&self) -> &Version {
+        &self.info.version
     }
 }
 

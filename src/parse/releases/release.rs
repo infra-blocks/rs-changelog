@@ -1,3 +1,5 @@
+use semver::Version;
+
 use crate::parse::{
     ast::Ast,
     releases::{Changes, ChangesParseError, ReleaseHeading, ReleaseHeadingParseError},
@@ -20,6 +22,10 @@ impl Release {
         let changes = Changes::parse(ast)?;
 
         Ok(Release::new(heading, changes))
+    }
+
+    pub fn version(&self) -> &Version {
+        self.heading.version()
     }
 }
 
