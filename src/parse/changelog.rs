@@ -1,7 +1,8 @@
 use std::{error::Error, fmt::Display};
 
 use crate::parse::{
-    releases::{ChangesParseError, Releases, ReleasesParseError, Unreleased, UnreleasedParseError},
+    ast::Ast,
+    releases::{ChangesParseError, Release, ReleaseParseError, Unreleased, UnreleasedParseError},
     title::{Title, TitleParseError},
 };
 
@@ -13,7 +14,7 @@ pub struct Changelog<'source> {
     /// The unreleased section of a document is optional, as it would basically become empty
     /// after each release. So, whether the user decides to have one or not, is up to them.
     unreleased: Option<Unreleased>,
-    releases: Releases,
+    releases: Vec<Release>,
 }
 
 impl<'source> Changelog<'source> {
@@ -21,7 +22,7 @@ impl<'source> Changelog<'source> {
         source: &'source str,
         title: Title,
         unreleased: Option<Unreleased>,
-        releases: Releases,
+        releases: Vec<Release>,
     ) -> Self {
         Self {
             source,
@@ -43,9 +44,25 @@ impl<'source> Changelog<'source> {
                 }
             },
         };
-        let releases = Releases::parse(&mut ast)?;
+        let mut releases = vec![];
+        loop {
+            match Release::parse(&mut ast) {
+                Ok(release) => releases.push(release),
+                // If we were able to construct at least one release,
+                // we may just be at the end, or reaching the ref defs.
+                Err(_) if !releases.is_empty() => break,
+                // TODO: should there really be this rule?
+                // It is considered an error to not have a single release
+                // at this moment, but that could change.
+                Err(err) => return Err(err.into()),
+            }
+        }
 
         Ok(Changelog::new(source, title, unreleased, releases))
+    }
+
+    pub fn releases(&self) -> &[Release] {
+        &self.releases
     }
 }
 
@@ -55,7 +72,7 @@ pub enum ChangelogParseError {
     // The unreleased parsing can only fail for invalid changes. An invalid heading simply
     // moves on to the releases parsing.
     InvalidUnreleased(ChangesParseError),
-    InvalidReleases(ReleasesParseError),
+    InvalidRelease(ReleaseParseError),
 }
 
 impl From<TitleParseError> for ChangelogParseError {
@@ -64,9 +81,9 @@ impl From<TitleParseError> for ChangelogParseError {
     }
 }
 
-impl From<ReleasesParseError> for ChangelogParseError {
-    fn from(value: ReleasesParseError) -> Self {
-        Self::InvalidReleases(value)
+impl From<ReleaseParseError> for ChangelogParseError {
+    fn from(value: ReleaseParseError) -> Self {
+        Self::InvalidRelease(value)
     }
 }
 
@@ -78,7 +95,7 @@ impl Display for ChangelogParseError {
         match self {
             ChangelogParseError::InvalidTitle(err) => write!(f, "{}", err),
             ChangelogParseError::InvalidUnreleased(err) => write!(f, "{:?}", err),
-            ChangelogParseError::InvalidReleases(err) => write!(f, "{:?}", err),
+            ChangelogParseError::InvalidRelease(err) => write!(f, "{:?}", err),
         }
     }
 }

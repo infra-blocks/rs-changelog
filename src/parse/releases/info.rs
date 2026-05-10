@@ -30,8 +30,9 @@ impl From<DateParseError> for ReleaseInfoParseError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseInfo {
-    version: Version,
-    date: NaiveDate,
+    // TODO: test that prereleases and build meta aren't valid mafock?
+    pub version: Version,
+    pub date: NaiveDate,
 }
 
 impl ReleaseInfo {
