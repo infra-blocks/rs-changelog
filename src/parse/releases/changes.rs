@@ -2,198 +2,50 @@ use std::ops::Range;
 
 use crate::parse::{
     ast::Ast,
-    releases::change_set::{ChangeSet, ChangeSetKind, ChangeSetParseError},
+    releases::change_set::{ChangeSet, ChangeSetParseError},
 };
 
-// TODO: wrap the *OPTION* in new type instead of the inner for clarity.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Changes {
-    added: Option<Added>,
-    changed: Option<Changed>,
-    deprecated: Option<Deprecated>,
-    removed: Option<Removed>,
-    fixed: Option<Fixed>,
-    security: Option<Security>,
+    change_sets: Vec<ChangeSet>,
 }
 
 impl Changes {
-    pub fn try_new(
-        added: Option<Added>,
-        changed: Option<Changed>,
-        deprecated: Option<Deprecated>,
-        removed: Option<Removed>,
-        fixed: Option<Fixed>,
-        security: Option<Security>,
-    ) -> Result<Self, ()> {
-        if added.is_some()
-            || changed.is_some()
-            || deprecated.is_some()
-            || removed.is_some()
-            || fixed.is_some()
-            || security.is_some()
-        {
-            Ok(Self::new(
-                added, changed, deprecated, removed, fixed, security,
-            ))
-        } else {
-            Err(())
-        }
-    }
-
-    /// Returns the range covering the whole set of changes.
-    #[allow(dead_code)]
-    pub fn range(&self) -> Range<usize> {
-        let mut start = usize::MAX;
-        let mut end = usize::MIN;
-        let mut update_range_bounds = |cs: &ChangeSet| {
-            let cs_range = cs.range();
-            if cs_range.start < start {
-                start = cs_range.start;
-            }
-            if cs_range.end > end {
-                end = cs_range.end;
-            }
-        };
-        if let Some(cs) = &self.added {
-            update_range_bounds(&cs.0)
-        }
-        if let Some(cs) = &self.changed {
-            update_range_bounds(&cs.0)
-        }
-        if let Some(cs) = &self.deprecated {
-            update_range_bounds(&cs.0)
-        }
-        if let Some(cs) = &self.removed {
-            update_range_bounds(&cs.0)
-        }
-        if let Some(cs) = &self.fixed {
-            update_range_bounds(&cs.0)
-        }
-        if let Some(cs) = &self.security {
-            update_range_bounds(&cs.0)
-        }
-
-        Range { start, end }
-    }
-
     pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ChangesParseError> {
-        let mut added: Option<Added> = None;
-        let mut changed: Option<Changed> = None;
-        let mut deprecated: Option<Deprecated> = None;
-        let mut removed: Option<Removed> = None;
-        let mut fixed: Option<Fixed> = None;
-        let mut security: Option<Security> = None;
-
-        let duplicate_change_set_err = |kind, first: ChangeSet, second: ChangeSet| {
-            Err(ChangesParseError::DuplicateChangeSet {
-                kind,
-                first: first.range(),
-                second: second.range(),
-            })
-        };
-
+        let mut change_sets: Vec<ChangeSet> = vec![];
         loop {
             match ChangeSet::parse(ast) {
-                Ok((kind, change_set)) => match kind {
-                    ChangeSetKind::Added => match added {
-                        Some(first) => {
-                            return duplicate_change_set_err(kind, first.0, change_set);
-                        }
-                        _ => added = Some(Added(change_set)),
-                    },
-                    ChangeSetKind::Changed => match changed {
-                        Some(first) => {
-                            return duplicate_change_set_err(kind, first.0, change_set);
-                        }
-                        _ => changed = Some(Changed(change_set)),
-                    },
-                    ChangeSetKind::Deprecated => match deprecated {
-                        Some(first) => {
-                            return duplicate_change_set_err(kind, first.0, change_set);
-                        }
-                        _ => deprecated = Some(Deprecated(change_set)),
-                    },
-                    ChangeSetKind::Removed => match removed {
-                        Some(first) => {
-                            return duplicate_change_set_err(kind, first.0, change_set);
-                        }
-                        _ => removed = Some(Removed(change_set)),
-                    },
-                    ChangeSetKind::Fixed => match fixed {
-                        Some(first) => {
-                            return duplicate_change_set_err(kind, first.0, change_set);
-                        }
-                        _ => fixed = Some(Fixed(change_set)),
-                    },
-                    ChangeSetKind::Security => match security {
-                        Some(first) => {
-                            return duplicate_change_set_err(kind, first.0, change_set);
-                        }
-                        _ => security = Some(Security(change_set)),
-                    },
-                },
+                Ok(change_set) => {
+                    if let Some(first) = change_sets.iter().find(|cs| cs.is_same_kind(&change_set))
+                    {
+                        return Err(ChangesParseError::DuplicateChangeSet {
+                            first: first.range(),
+                            second: change_set.range(),
+                        });
+                    }
+                    change_sets.push(change_set);
+                }
                 // An error signals termination, not necessarily that there is an actual error.
                 // There is only an error if no change set could be parsed before the first error.
                 Err(err) => {
-                    return Self::try_new(added, changed, deprecated, removed, fixed, security)
-                        .map_err(|_| err.into());
+                    if change_sets.is_empty() {
+                        return Err(err.into());
+                    } else {
+                        return Ok(Self::new(change_sets));
+                    }
                 }
             }
         }
     }
 
-    fn new(
-        added: Option<Added>,
-        changed: Option<Changed>,
-        deprecated: Option<Deprecated>,
-        removed: Option<Removed>,
-        fixed: Option<Fixed>,
-        security: Option<Security>,
-    ) -> Self {
-        Self {
-            added,
-            changed,
-            deprecated,
-            removed,
-            fixed,
-            security,
-        }
+    fn new(change_sets: Vec<ChangeSet>) -> Self {
+        Self { change_sets }
     }
 }
 
-impl From<Added> for Changes {
-    fn from(value: Added) -> Self {
-        Changes::new(Some(value), None, None, None, None, None)
-    }
-}
-
-impl From<Changed> for Changes {
-    fn from(value: Changed) -> Self {
-        Changes::new(None, Some(value), None, None, None, None)
-    }
-}
-
-impl From<Deprecated> for Changes {
-    fn from(value: Deprecated) -> Self {
-        Changes::new(None, None, Some(value), None, None, None)
-    }
-}
-
-impl From<Removed> for Changes {
-    fn from(value: Removed) -> Self {
-        Changes::new(None, None, None, Some(value), None, None)
-    }
-}
-
-impl From<Fixed> for Changes {
-    fn from(value: Fixed) -> Self {
-        Changes::new(None, None, None, None, Some(value), None)
-    }
-}
-
-impl From<Security> for Changes {
-    fn from(value: Security) -> Self {
-        Changes::new(None, None, None, None, None, Some(value))
+impl<T: Into<ChangeSet>> From<T> for Changes {
+    fn from(value: T) -> Self {
+        Changes::new(vec![value.into()])
     }
 }
 
@@ -201,7 +53,6 @@ impl From<Security> for Changes {
 pub enum ChangesParseError {
     InvalidChangeSet(ChangeSetParseError),
     DuplicateChangeSet {
-        kind: ChangeSetKind,
         first: Range<usize>,
         second: Range<usize>,
     },
@@ -213,63 +64,10 @@ impl From<ChangeSetParseError> for ChangesParseError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Added(ChangeSet);
-
-impl From<ChangeSet> for Added {
-    fn from(value: ChangeSet) -> Self {
-        Added(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Changed(ChangeSet);
-
-impl From<ChangeSet> for Changed {
-    fn from(value: ChangeSet) -> Self {
-        Changed(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Deprecated(ChangeSet);
-
-impl From<ChangeSet> for Deprecated {
-    fn from(value: ChangeSet) -> Self {
-        Deprecated(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Removed(ChangeSet);
-
-impl From<ChangeSet> for Removed {
-    fn from(value: ChangeSet) -> Self {
-        Removed(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Fixed(ChangeSet);
-
-impl From<ChangeSet> for Fixed {
-    fn from(value: ChangeSet) -> Self {
-        Fixed(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Security(ChangeSet);
-
-impl From<ChangeSet> for Security {
-    fn from(value: ChangeSet) -> Self {
-        Security(value)
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use crate::parse::releases::change_set::Change;
+
+    use crate::parse::releases::{Added, Change, Changed, Deprecated, Fixed, Removed, Security};
 
     use super::*;
 
@@ -285,7 +83,6 @@ mod test {
         assert_eq!(
             result,
             Err(ChangesParseError::DuplicateChangeSet {
-                kind: ChangeSetKind::Added,
                 first: 0..18,
                 second: 18..56
             })
@@ -301,10 +98,10 @@ mod test {
 - the stuff you liked
 ### Deprecated
 - the brand new stuff
-### Removed
-- the stuff you needed
 ### Fixed
 - the stuff you didn't care about
+### Removed
+- the stuff you needed
 ### Security
 - ooopsies
 ",
@@ -312,23 +109,14 @@ mod test {
         let result = Changes::parse(&mut ast);
         assert_eq!(
             result,
-            Ok(Changes::new(
-                Some(Added(ChangeSet::new(0..10, vec![Change::new(10..37)]))),
-                Some(Changed(ChangeSet::new(37..49, vec![Change::new(49..71)]))),
-                Some(Deprecated(ChangeSet::new(
-                    71..86,
-                    vec![Change::new(86..108)]
-                ))),
-                Some(Removed(ChangeSet::new(
-                    108..120,
-                    vec![Change::new(120..143)]
-                ))),
-                Some(Fixed(ChangeSet::new(143..153, vec![Change::new(153..187)]))),
-                Some(Security(ChangeSet::new(
-                    187..200,
-                    vec![Change::new(200..211)]
-                ))),
-            ))
+            Ok(Changes::new(vec![
+                Added::new(0..10, vec![Change::new(10..37)]).into(),
+                Changed::new(37..49, vec![Change::new(49..71)]).into(),
+                Deprecated::new(71..86, vec![Change::new(86..108)]).into(),
+                Fixed::new(108..118, vec![Change::new(118..152)]).into(),
+                Removed::new(152..164, vec![Change::new(164..187)]).into(),
+                Security::new(187..200, vec![Change::new(200..211)]).into(),
+            ]))
         );
     }
 }

@@ -52,8 +52,8 @@ mod test {
 
     mod parse {
         use crate::parse::releases::{
-            Changed,
-            change_set::{Change, ChangeSet, ChangeSetParseError},
+            Changes,
+            change_set::{Change, ChangeSetParseError, Changed},
         };
 
         use super::*;
@@ -99,7 +99,7 @@ mod test {
                 result,
                 Ok(Unreleased::new(
                     UnreleasedHeading::new(0..16),
-                    Changed::from(ChangeSet::new(17..29, vec![Change::new(29..38)])).into()
+                    Changes::from(Changed::new(17..29, vec![Change::new(29..38)]))
                 ))
             );
         }

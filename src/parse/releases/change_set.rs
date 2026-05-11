@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 pub use change::*;
-pub use change_set_kind::*;
+use change_set_kind::*;
 
 use changelog_ast::{HeadingLevel, Node};
 
@@ -82,10 +82,10 @@ mod change_set_kind {
         Changed,
         /// Deprecated items in a change set.
         Deprecated,
-        /// Removed items in a change set.
-        Removed,
         /// Fixed items in a change set.
         Fixed,
+        /// Removed items in a change set.
+        Removed,
         /// Security items in a change set.
         Security,
     }
@@ -199,35 +199,59 @@ pub enum ChangeSetParseError {
     /// When the content of the header does not match our expectations.
     ///
     /// This happens when it doesn't match one of the known strings identifying
-    /// the change set kind. See [ChangeSetKind].
+    /// the change set kind.
     InvalidHeader(Range<usize>),
     InvalidItem(Range<usize>),
     InvalidChangesList(Range<usize>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChangeSet {
-    heading: Range<usize>,
-    items: Vec<Change>,
+pub enum ChangeSet {
+    Added(Added),
+    Changed(Changed),
+    Deprecated(Deprecated),
+    Fixed(Fixed),
+    Removed(Removed),
+    Security(Security),
 }
 
 impl ChangeSet {
-    pub fn new(heading: Range<usize>, items: Vec<Change>) -> Self {
-        Self { heading, items }
-    }
-
-    /// Returns the range covering the whole change set.
     pub fn range(&self) -> Range<usize> {
-        let start = self.heading.start;
-        let end = self
-            .items
-            .last()
-            .map(|c| c.range.end)
-            .unwrap_or(self.heading.end);
-        Range { start, end }
+        match self {
+            ChangeSet::Added(inner) => inner.range(),
+            ChangeSet::Changed(inner) => inner.range(),
+            ChangeSet::Deprecated(inner) => inner.range(),
+            ChangeSet::Fixed(inner) => inner.range(),
+            ChangeSet::Removed(inner) => inner.range(),
+            ChangeSet::Security(inner) => inner.range(),
+        }
     }
 
-    pub(crate) fn parse(ast: &mut Ast) -> Result<(ChangeSetKind, Self), ChangeSetParseError> {
+    pub fn is_added(&self) -> bool {
+        matches!(self, ChangeSet::Added(_))
+    }
+
+    pub fn is_changed(&self) -> bool {
+        matches!(self, ChangeSet::Changed(_))
+    }
+
+    pub fn is_deprecated(&self) -> bool {
+        matches!(self, ChangeSet::Deprecated(_))
+    }
+
+    pub fn is_fixed(&self) -> bool {
+        matches!(self, ChangeSet::Fixed(_))
+    }
+
+    pub fn is_removed(&self) -> bool {
+        matches!(self, ChangeSet::Removed(_))
+    }
+
+    pub fn is_security(&self) -> bool {
+        matches!(self, ChangeSet::Security(_))
+    }
+
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ChangeSetParseError> {
         // The first node should be a heading of level 3, and its inner text should equal
         // "Added" verbatim.
         let Some(first) = ast.front() else {
@@ -271,7 +295,29 @@ impl ChangeSet {
         let heading_range = ast.pop_front().unwrap().unwrap_heading().range;
         // Just double checking our assumptions are correct still.
         ast.pop_front().unwrap().unwrap_list();
-        Ok((kind, Self::new(heading_range, items)))
+        Ok((kind, heading_range, items).into())
+    }
+
+    pub(crate) fn is_same_kind(&self, other: &ChangeSet) -> bool {
+        self.is_added() && other.is_added()
+            || self.is_changed() && other.is_changed()
+            || self.is_deprecated() && other.is_deprecated()
+            || self.is_fixed() && other.is_fixed()
+            || self.is_removed() && other.is_removed()
+            || self.is_security() && other.is_security()
+    }
+}
+
+impl From<(ChangeSetKind, Range<usize>, Vec<Change>)> for ChangeSet {
+    fn from(value: (ChangeSetKind, Range<usize>, Vec<Change>)) -> Self {
+        match value.0 {
+            ChangeSetKind::Added => Self::Added(Added::new(value.1, value.2)),
+            ChangeSetKind::Changed => Self::Changed(Changed::new(value.1, value.2)),
+            ChangeSetKind::Deprecated => Self::Deprecated(Deprecated::new(value.1, value.2)),
+            ChangeSetKind::Fixed => Self::Fixed(Fixed::new(value.1, value.2)),
+            ChangeSetKind::Removed => Self::Removed(Removed::new(value.1, value.2)),
+            ChangeSetKind::Security => Self::Security(Security::new(value.1, value.2)),
+        }
     }
 }
 
@@ -284,11 +330,116 @@ mod test {
         let mut ast = Ast::from("### Added\n\n- Some sheeet\n- Big sheet");
         assert_eq!(
             ChangeSet::parse(&mut ast),
-            Ok((
-                ChangeSetKind::Added,
-                ChangeSet::new(0..10, vec![Change::new(11..25), Change::new(25..36)])
-            ))
+            Ok(ChangeSet::Added(Added::new(
+                0..10,
+                vec![Change::new(11..25), Change::new(25..36)]
+            )))
+        );
+        assert!(ast.is_empty());
+    }
+
+    #[test]
+    fn should_work_for_a_valid_changed_change_set() {
+        let mut ast = Ast::from("### Changed\n\n- Some sheeet\n- Big sheet");
+        assert_eq!(
+            ChangeSet::parse(&mut ast),
+            Ok(ChangeSet::Changed(Changed::new(
+                0..12,
+                vec![Change::new(13..27), Change::new(27..38)]
+            )))
+        );
+        assert!(ast.is_empty());
+    }
+
+    #[test]
+    fn should_work_for_a_valid_deprecated_change_set() {
+        let mut ast = Ast::from("### Deprecated\n\n- Some sheeet\n- Big sheet");
+        assert_eq!(
+            ChangeSet::parse(&mut ast),
+            Ok(ChangeSet::Deprecated(Deprecated::new(
+                0..15,
+                vec![Change::new(16..30), Change::new(30..41)]
+            )))
+        );
+        assert!(ast.is_empty());
+    }
+
+    #[test]
+    fn should_work_for_a_valid_fixed_change_set() {
+        let mut ast = Ast::from("### Fixed\n\n- Some sheeet\n- Big sheet");
+        assert_eq!(
+            ChangeSet::parse(&mut ast),
+            Ok(ChangeSet::Fixed(Fixed::new(
+                0..10,
+                vec![Change::new(11..25), Change::new(25..36)]
+            )))
+        );
+        assert!(ast.is_empty());
+    }
+
+    #[test]
+    fn should_work_for_a_valid_removed_change_set() {
+        let mut ast = Ast::from("### Removed\n\n- Some sheeet\n- Big sheet");
+        assert_eq!(
+            ChangeSet::parse(&mut ast),
+            Ok(ChangeSet::Removed(Removed::new(
+                0..12,
+                vec![Change::new(13..27), Change::new(27..38)]
+            )))
+        );
+        assert!(ast.is_empty());
+    }
+
+    #[test]
+    fn should_work_for_a_valid_security_change_set() {
+        let mut ast = Ast::from("### Security\n\n- Some sheeet\n- Big sheet");
+        assert_eq!(
+            ChangeSet::parse(&mut ast),
+            Ok(ChangeSet::Security(Security::new(
+                0..13,
+                vec![Change::new(14..28), Change::new(28..39)]
+            )))
         );
         assert!(ast.is_empty());
     }
 }
+
+macro_rules! ChangeSetVariant {
+    ($name:ident) => {
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub struct $name {
+            heading: Range<usize>,
+            items: Vec<Change>,
+        }
+
+        impl $name {
+            pub(crate) fn new(heading: Range<usize>, items: Vec<Change>) -> Self {
+                Self { heading, items }
+            }
+
+            /// Returns the range covering the whole change set.
+            pub fn range(&self) -> Range<usize> {
+                let start = self.heading.start;
+                let end = self
+                    .items
+                    .last()
+                    .map(|c| c.range.end)
+                    .unwrap_or(self.heading.end);
+                start..end
+            }
+        }
+
+        impl From<$name> for ChangeSet {
+            fn from(value: $name) -> Self {
+                Self::$name(value)
+            }
+        }
+    };
+}
+
+ChangeSetVariant!(Added);
+ChangeSetVariant!(Changed);
+ChangeSetVariant!(Deprecated);
+ChangeSetVariant!(Fixed);
+ChangeSetVariant!(Removed);
+ChangeSetVariant!(Security);
