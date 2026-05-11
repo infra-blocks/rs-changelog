@@ -406,7 +406,7 @@ mod test {
 
 macro_rules! ChangeSetVariant {
     ($name:ident) => {
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Default, Clone, PartialEq, Eq)]
         pub struct $name {
             heading: Range<usize>,
             items: Vec<Change>,

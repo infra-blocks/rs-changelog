@@ -18,6 +18,10 @@ impl Release {
         Self { heading, changes }
     }
 
+    pub fn changes(&self) -> &Changes {
+        &self.changes
+    }
+
     pub fn version(&self) -> &Version {
         self.heading.version()
     }
