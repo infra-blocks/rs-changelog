@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use changelog_ast::{Heading, HeadingLevel, Node};
+use chrono::NaiveDate;
 use semver::Version;
 
 use crate::parse::{
@@ -48,6 +49,10 @@ impl ReleaseHeading {
 
     pub fn version(&self) -> &Version {
         &self.info.version
+    }
+
+    pub fn date(&self) -> &NaiveDate {
+        &self.info.date
     }
 }
 

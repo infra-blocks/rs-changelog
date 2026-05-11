@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use semver::Version;
 
 use crate::parse::{
@@ -17,15 +18,19 @@ impl Release {
         Self { heading, changes }
     }
 
-    pub fn parse(ast: &mut Ast) -> Result<Self, ReleaseParseError> {
+    pub fn version(&self) -> &Version {
+        self.heading.version()
+    }
+
+    pub fn date(&self) -> &NaiveDate {
+        self.heading.date()
+    }
+
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ReleaseParseError> {
         let heading = ReleaseHeading::parse(ast)?;
         let changes = Changes::parse(ast)?;
 
         Ok(Release::new(heading, changes))
-    }
-
-    pub fn version(&self) -> &Version {
-        self.heading.version()
     }
 }
 
