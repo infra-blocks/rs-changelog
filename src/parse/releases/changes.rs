@@ -11,6 +11,10 @@ pub struct Changes {
 }
 
 impl Changes {
+    pub(crate) fn iter(&self) -> std::slice::Iter<'_, ChangeSet> {
+        self.change_sets.iter()
+    }
+
     pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ChangesParseError> {
         let mut change_sets: Vec<ChangeSet> = vec![];
         loop {

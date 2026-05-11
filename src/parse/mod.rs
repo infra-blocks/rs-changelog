@@ -4,5 +4,6 @@ mod node_ext;
 mod releases;
 mod title;
 
+// TODO: reduce visibility when ready to publish crate.
 pub use changelog::{Changelog, ChangelogParseError};
-// TODO: reexport relevant types.
+pub use releases::*;

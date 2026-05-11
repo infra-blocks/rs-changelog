@@ -1,16 +1,19 @@
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, ops::Range};
 
 use chrono::NaiveDate;
 use itertools::Itertools;
 use semver::Version;
 
-use crate::Changelog;
+use crate::{Changelog, lint::ordered_change_set::OrderedChangeSet};
+
+mod ordered_change_set;
 
 impl<'source> Changelog<'source> {
     pub fn lint(&self) -> Result<(), ChangelogLintError> {
         // Check ordering of releases. Could be done during parsing?
-        self.lint_release_version_in_descending_order()?;
-        self.lint_release_date_in_descending_order()?;
+        self.lint_release_versions_in_descending_order()?;
+        self.lint_release_dates_in_descending_order()?;
+        self.lint_release_change_sets_in_lexicographical_order()?;
 
         // Check ordering of change sets. Could be don
         // e during parsing?
@@ -19,7 +22,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    fn lint_release_version_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+    fn lint_release_versions_in_descending_order(&self) -> Result<(), ChangelogLintError> {
         let releases = self.releases();
         for (previous, current) in releases.iter().map(|r| r.version()).tuple_windows() {
             // Releases are unique so they can't be the same neither. TODO: different error type?
@@ -33,7 +36,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    fn lint_release_date_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+    fn lint_release_dates_in_descending_order(&self) -> Result<(), ChangelogLintError> {
         let releases = self.releases();
         for (previous, current) in releases.iter().map(|r| r.date()).tuple_windows() {
             // The date could be the same, since it's a granularity of one day.
@@ -45,12 +48,31 @@ impl<'source> Changelog<'source> {
         }
         Ok(())
     }
+
+    fn lint_release_change_sets_in_lexicographical_order(&self) -> Result<(), ChangelogLintError> {
+        let releases = self.releases();
+        for release in releases {
+            let changes = release.changes();
+            for (previous, current) in changes.iter().map(OrderedChangeSet).tuple_windows() {
+                if previous >= current {
+                    return Err(ChangelogLintError::UnorderedReleaseChangeSets(
+                        previous.0.range(),
+                        current.0.range(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangelogLintError {
+    // TODO: store ranges instead?!?!?
     UnorderedReleaseVersions(Version, Version),
     UnorderedReleaseDates(NaiveDate, NaiveDate),
+    UnorderedReleaseChangeSets(Range<usize>, Range<usize>),
 }
 
 impl Display for ChangelogLintError {
@@ -66,6 +88,14 @@ impl Display for ChangelogLintError {
                 "expected release date {} to come after {} to respect descending order",
                 first, second
             ),
+            // TODO: prettify
+            ChangelogLintError::UnorderedReleaseChangeSets(first, second) => {
+                write!(
+                    f,
+                    "expected change set {:?} to come after {:?}",
+                    first, second
+                )
+            }
         }
     }
 }
@@ -141,6 +171,36 @@ This is a mfking changelog y'all.
                 Err(ChangelogLintError::UnorderedReleaseDates(
                     NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
                     NaiveDate::from_ymd_opt(2026, 2, 1).unwrap()
+                ))
+            );
+        }
+
+        #[test]
+        fn should_error_for_unordered_change_sets() {
+            let changelog = Changelog::parse(
+                r"# Changelog
+
+This is a mfking changelog y'all.
+
+## [0.1.0] - 2026-02-01
+
+### Removed
+
+- The same bull just added.
+
+### Added
+
+- Some bull.
+
+[0.1.0]: https://github.com/owner/repo/releases/tag/v0.1.0",
+            )
+            .unwrap();
+            let result = changelog.lint();
+            assert_eq!(
+                result,
+                Err(ChangelogLintError::UnorderedReleaseChangeSets(
+                    73..115,
+                    115..140
                 ))
             );
         }
