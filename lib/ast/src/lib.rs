@@ -7,7 +7,8 @@ pub use node_children_iterator::*;
 
 // Useful reexports.
 pub use pulldown_cmark::{
-    Alignment, BlockQuoteKind, CodeBlockKind, CowStr, HeadingLevel, LinkType, MetadataBlockKind,
+    Alignment, BlockQuoteKind, CodeBlockKind, CowStr, HeadingLevel, LinkDef, LinkType,
+    MetadataBlockKind, RefDefs,
 };
 use pulldown_cmark::{OffsetIter, Parser};
 
@@ -32,6 +33,10 @@ impl<'source> AstIterator<'source> {
     pub fn new(source: &'source str) -> Self {
         let parser = Parser::new(source);
         Self::with_inner(parser.into_offset_iter())
+    }
+
+    pub fn reference_definitions(&self) -> &RefDefs<'source> {
+        self.inner.reference_definitions()
     }
 
     fn with_inner(inner: OffsetIter<'source>) -> Self {

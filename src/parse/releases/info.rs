@@ -1,8 +1,7 @@
 use std::ops::Range;
 
-use changelog_ast::{Link, Node, Text};
+use changelog_ast::{Link, LinkType, Node, Text};
 use chrono::NaiveDate;
-use pulldown_cmark::LinkType;
 use semver::Version;
 
 use crate::parse::node_ext::NodeExt;
