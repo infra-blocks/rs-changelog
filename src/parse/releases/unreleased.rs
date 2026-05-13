@@ -17,7 +17,11 @@ pub struct Unreleased {
 }
 
 impl Unreleased {
-    pub fn new(heading: UnreleasedHeading, changes: Changes) -> Self {
+    pub fn changes(&self) -> &Changes {
+        &self.changes
+    }
+
+    pub(crate) fn new(heading: UnreleasedHeading, changes: Changes) -> Self {
         Self { heading, changes }
     }
 

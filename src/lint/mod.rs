@@ -50,12 +50,24 @@ impl<'source> Changelog<'source> {
     }
 
     fn lint_release_change_sets_in_lexicographical_order(&self) -> Result<(), ChangelogLintError> {
+        if let Some(unreleased) = self.unreleased() {
+            let changes = unreleased.changes();
+            for (previous, current) in changes.iter().map(OrderedChangeSet).tuple_windows() {
+                if previous >= current {
+                    return Err(ChangelogLintError::UnorderedChangeSets(
+                        previous.0.range(),
+                        current.0.range(),
+                    ));
+                }
+            }
+        }
+
         let releases = self.releases();
         for release in releases {
             let changes = release.changes();
             for (previous, current) in changes.iter().map(OrderedChangeSet).tuple_windows() {
                 if previous >= current {
-                    return Err(ChangelogLintError::UnorderedReleaseChangeSets(
+                    return Err(ChangelogLintError::UnorderedChangeSets(
                         previous.0.range(),
                         current.0.range(),
                     ));
@@ -72,7 +84,7 @@ pub enum ChangelogLintError {
     // TODO: store ranges instead?!?!?
     UnorderedReleaseVersions(Version, Version),
     UnorderedReleaseDates(NaiveDate, NaiveDate),
-    UnorderedReleaseChangeSets(Range<usize>, Range<usize>),
+    UnorderedChangeSets(Range<usize>, Range<usize>),
 }
 
 impl Display for ChangelogLintError {
@@ -89,7 +101,7 @@ impl Display for ChangelogLintError {
                 first, second
             ),
             // TODO: prettify
-            ChangelogLintError::UnorderedReleaseChangeSets(first, second) => {
+            ChangelogLintError::UnorderedChangeSets(first, second) => {
                 write!(
                     f,
                     "expected change set {:?} to come after {:?}",
@@ -198,10 +210,34 @@ This is a mfking changelog y'all.
             let result = changelog.lint();
             assert_eq!(
                 result,
-                Err(ChangelogLintError::UnorderedReleaseChangeSets(
-                    73..115,
-                    115..140
-                ))
+                Err(ChangelogLintError::UnorderedChangeSets(73..115, 115..140))
+            );
+        }
+
+        #[test]
+        fn should_error_for_unordered_unreleased_change_sets() {
+            let changelog = Changelog::parse(
+                r"# Changelog
+
+This is a mfking changelog y'all.
+
+## [Unreleased]
+
+### Removed
+
+- The same bull just added.
+
+### Added
+
+- Some bull.
+
+[Unreleased]: https://github.com/owner/repo/releases/tag/v0.1.0",
+            )
+            .unwrap();
+            let result = changelog.lint();
+            assert_eq!(
+                result,
+                Err(ChangelogLintError::UnorderedChangeSets(65..107, 107..132))
             );
         }
 

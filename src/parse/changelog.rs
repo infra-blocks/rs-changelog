@@ -7,6 +7,7 @@ use crate::parse::{
 };
 
 // TODO: implement ToOwned
+// TODO: force to have at least an unreleased or a release?
 #[derive(Debug, Clone, PartialEq)]
 pub struct Changelog<'source> {
     source: &'source str,
@@ -48,17 +49,18 @@ impl<'source> Changelog<'source> {
         loop {
             match Release::parse(&mut ast) {
                 Ok(release) => releases.push(release),
-                // If we were able to construct at least one release,
-                // we may just be at the end, or reaching the ref defs.
-                Err(_) if !releases.is_empty() => break,
-                // TODO: should there really be this rule?
-                // It is considered an error to not have a single release
-                // at this moment, but that could change.
+                // If we were able to construct at least one release or we have an
+                // unreleased block, we may just be at the end, or reaching the ref defs.
+                Err(_) if !releases.is_empty() || unreleased.is_some() => break,
                 Err(err) => return Err(err.into()),
             }
         }
 
         Ok(Changelog::new(source, title, unreleased, releases))
+    }
+
+    pub fn unreleased(&self) -> &Option<Unreleased> {
+        &self.unreleased
     }
 
     pub fn releases(&self) -> &[Release] {
