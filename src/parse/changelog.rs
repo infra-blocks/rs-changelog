@@ -2,20 +2,24 @@ use std::{error::Error, fmt::Display};
 
 use crate::parse::{
     ast::Ast,
+    reference_definition::ReferenceDefinition,
     releases::{ChangesParseError, Release, ReleaseParseError, Unreleased, UnreleasedParseError},
     title::{Title, TitleParseError},
 };
 
 // TODO: implement ToOwned
 // TODO: force to have at least an unreleased or a release?
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Changelog<'source> {
+    #[allow(dead_code)]
     source: &'source str,
+    #[allow(dead_code)]
     title: Title,
     /// The unreleased section of a document is optional, as it would basically become empty
     /// after each release. So, whether the user decides to have one or not, is up to them.
     unreleased: Option<Unreleased>,
     releases: Vec<Release>,
+    reference_definitions: Vec<ReferenceDefinition<'source>>,
 }
 
 impl<'source> Changelog<'source> {
@@ -24,12 +28,14 @@ impl<'source> Changelog<'source> {
         title: Title,
         unreleased: Option<Unreleased>,
         releases: Vec<Release>,
+        reference_definitions: Vec<ReferenceDefinition<'source>>,
     ) -> Self {
         Self {
             source,
             title,
             unreleased,
             releases,
+            reference_definitions,
         }
     }
 
@@ -52,15 +58,33 @@ impl<'source> Changelog<'source> {
                 // If we were able to construct at least one release or we have an
                 // unreleased block, we may just be at the end, or reaching the ref defs.
                 Err(_) if !releases.is_empty() || unreleased.is_some() => break,
+                // TODO: maybe that's always an actual error, given that ref def aren't emitted as events.
                 Err(err) => return Err(err.into()),
             }
         }
+        let mut reference_definitions: Vec<_> = ast
+            .reference_definitions()
+            .iter()
+            .map(|(k, v)| ReferenceDefinition::new(k.to_owned(), v.dest.clone(), v.span.clone()))
+            .collect();
+        reference_definitions.sort_unstable_by_key(|rd| rd.range().start);
 
-        Ok(Changelog::new(source, title, unreleased, releases))
+        Ok(Changelog::new(
+            source,
+            title,
+            unreleased,
+            releases,
+            reference_definitions,
+        ))
     }
 
     pub fn unreleased(&self) -> &Option<Unreleased> {
         &self.unreleased
+    }
+
+    // TODO: store in Release/Unreleased as reference_definition() instead?
+    pub fn reference_definitions(&self) -> &[ReferenceDefinition<'source>] {
+        &self.reference_definitions
     }
 
     pub fn releases(&self) -> &[Release] {

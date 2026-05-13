@@ -1,6 +1,7 @@
 mod ast;
 mod changelog;
 mod node_ext;
+mod reference_definition;
 mod releases;
 mod title;
 
