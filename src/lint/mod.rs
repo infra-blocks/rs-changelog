@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, ops::Range};
+use std::{collections::HashSet, error::Error, fmt::Display, ops::Range};
 
 use chrono::NaiveDate;
 use itertools::Itertools;
@@ -20,7 +20,7 @@ impl<'source> Changelog<'source> {
         self.lint_release_dates_in_descending_order()?;
         self.lint_release_change_sets_in_lexicographical_order()?;
         self.lint_reference_definitions_in_descending_order()?;
-        // self.lint_no_gap_between_definitions()?;
+        self.lint_no_dangling_reference_definitions()?;
         // self.lint_reference_definition_repository()?;
         // self.lint_reference_definition_links()?;
 
@@ -109,6 +109,25 @@ impl<'source> Changelog<'source> {
         }
         Ok(())
     }
+
+    pub fn lint_no_dangling_reference_definitions(&self) -> Result<(), ChangelogLintError> {
+        // This lint assumes the parsing eliminates all releases with broken links. So all the releases
+        // have working reference definitions, but the opposite is not necessarily true.
+        let release_versions: HashSet<_> = self
+            .releases()
+            .iter()
+            .map(|r| r.version().clone())
+            .collect();
+
+        for def in self.reference_definitions() {
+            if !release_versions.contains(&Version::parse(def.label()).unwrap()) {
+                return Err(ChangelogLintError::DanglingReferenceDefinition(
+                    def.range().clone(),
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -120,6 +139,7 @@ pub enum ChangelogLintError {
     UnorderedReleaseDates(NaiveDate, NaiveDate),
     UnorderedChangeSets(Range<usize>, Range<usize>),
     UnorderedReferenceDefinitions(Range<usize>, Range<usize>),
+    DanglingReferenceDefinition(Range<usize>),
 }
 
 impl Display for ChangelogLintError {
@@ -152,6 +172,9 @@ impl Display for ChangelogLintError {
                 "expected reference definition {:?} to come before {:?}",
                 first, second
             ),
+            ChangelogLintError::DanglingReferenceDefinition(range) => {
+                write!(f, "found dangling reference definition {:?}", range)
+            }
         }
     }
 }
@@ -348,6 +371,37 @@ This is a mfking changelog y'all.
                     149..207,
                     208..270
                 ))
+            );
+        }
+
+        #[test]
+        fn should_error_with_dangling_reference_definition() {
+            let changelog = Changelog::parse(
+                r"# Changelog
+
+This is a mfking changelog y'all.
+
+## [0.2.0] - 2026-02-04
+
+### Removed
+
+- The bull.
+
+## [0.1.0] - 2026-01-01
+
+### Added
+
+- Some bull.
+
+[0.2.0]: https://github.com/owner/repo/compare/v0.1.0...v0.2.0
+[0.1.1]: https://github.com/owner/repo/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/owner/repo/releases/tag/v0.1.0",
+            )
+            .unwrap();
+            let result = changelog.lint();
+            assert_eq!(
+                result,
+                Err(ChangelogLintError::DanglingReferenceDefinition(212..274))
             );
         }
 
