@@ -25,6 +25,7 @@ use pulldown_cmark::{OffsetIter, Parser};
 /// every following event is treated as a child of the node. The final matching [pulldown_cmark::Event::End] signifies
 /// the node has been constructed (the event itself is dropped). Every other [pulldown_cmark]
 /// event results in a leaf variant of [Node].
+#[derive(Debug)]
 pub struct AstIterator<'source> {
     inner: OffsetIter<'source>,
 }

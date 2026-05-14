@@ -12,13 +12,14 @@ impl<'source> Changelog<'source> {
     pub fn lint(&self) -> Result<(), ChangelogLintError> {
         // Check ordering of releases. Could be done during parsing?
         self.lint_release_versions_in_descending_order()?;
+        // self.lint_no_gap_between_versions()?;
         self.lint_release_dates_in_descending_order()?;
         self.lint_release_change_sets_in_lexicographical_order()?;
+        self.lint_reference_definitions_in_descending_order()?;
+        // self.lint_no_gap_between_definitions()?;
+        // self.lint_reference_definition_repository()?;
+        // self.lint_reference_definition_links()?;
 
-        // Check ordering of change sets. Could be don
-        // e during parsing?
-        // Check ordering of ref defs.
-        // Check links to be of the same form.
         Ok(())
     }
 
@@ -76,6 +77,21 @@ impl<'source> Changelog<'source> {
         }
         Ok(())
     }
+
+    fn lint_reference_definitions_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+        let reference_definitions = self.reference_definitions();
+        for (previous, current) in reference_definitions.iter().tuple_windows() {
+            let previous_version = Version::parse(previous.label()).unwrap();
+            let current_version = Version::parse(current.label()).unwrap();
+            if previous_version <= current_version {
+                return Err(ChangelogLintError::UnorderedReferenceDefinitions(
+                    previous.range().clone(),
+                    current.range().clone(),
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -85,6 +101,7 @@ pub enum ChangelogLintError {
     UnorderedReleaseVersions(Version, Version),
     UnorderedReleaseDates(NaiveDate, NaiveDate),
     UnorderedChangeSets(Range<usize>, Range<usize>),
+    UnorderedReferenceDefinitions(Range<usize>, Range<usize>),
 }
 
 impl Display for ChangelogLintError {
@@ -100,7 +117,6 @@ impl Display for ChangelogLintError {
                 "expected release date {} to come after {} to respect descending order",
                 first, second
             ),
-            // TODO: prettify
             ChangelogLintError::UnorderedChangeSets(first, second) => {
                 write!(
                     f,
@@ -108,6 +124,11 @@ impl Display for ChangelogLintError {
                     first, second
                 )
             }
+            ChangelogLintError::UnorderedReferenceDefinitions(first, second) => write!(
+                f,
+                "expected reference definition {:?} to come before {:?}",
+                first, second
+            ),
         }
     }
 }
@@ -238,6 +259,39 @@ This is a mfking changelog y'all.
             assert_eq!(
                 result,
                 Err(ChangelogLintError::UnorderedChangeSets(65..107, 107..132))
+            );
+        }
+
+        #[test]
+        fn should_error_for_unordered_reference_definitions() {
+            let changelog = Changelog::parse(
+                r"# Changelog
+
+This is a mfking changelog y'all.
+
+## [0.2.0] - 2026-02-04
+
+### Removed
+
+- The bull.
+
+## [0.1.0] - 2026-01-01
+
+### Added
+
+- Some bull.
+
+[0.1.0]: https://github.com/owner/repo/releases/tag/v0.1.0
+[0.2.0]: https://github.com/owner/repo/compare/v0.1.0...v0.2.0",
+            )
+            .unwrap();
+            let result = changelog.lint();
+            assert_eq!(
+                result,
+                Err(ChangelogLintError::UnorderedReferenceDefinitions(
+                    149..207,
+                    208..270
+                ))
             );
         }
 
