@@ -7,4 +7,5 @@ mod title;
 
 // TODO: reduce visibility when ready to publish crate.
 pub use changelog::{Changelog, ChangelogParseError};
+pub use reference_definition::*;
 pub use releases::*;

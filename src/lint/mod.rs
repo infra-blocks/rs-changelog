@@ -6,28 +6,30 @@ use semver::Version;
 
 use crate::{
     Changelog,
-    lint::{ordered_change_set::OrderedChangeSet, version_gap::versions_differ_by_one},
+    lint::{
+        ordered_change_set::OrderedChangeSet,
+        ref_def_linters::{RefDefLintError, RefDefLinter},
+        version_gap::versions_differ_by_one,
+    },
 };
 
 mod ordered_change_set;
+mod ref_def_linters;
 mod version_gap;
 
 impl<'source> Changelog<'source> {
     pub fn lint(&self) -> Result<(), ChangelogLintError> {
-        // Check ordering of releases. Could be done during parsing?
-        self.lint_release_versions_in_descending_order()?;
-        self.lint_no_gap_between_versions()?;
-        self.lint_release_dates_in_descending_order()?;
-        self.lint_release_change_sets_in_lexicographical_order()?;
-        self.lint_reference_definitions_in_descending_order()?;
-        self.lint_no_dangling_reference_definitions()?;
-        // self.lint_reference_definition_repository()?;
-        // self.lint_reference_definition_links()?;
-
+        self.release_versions_in_descending_order()?;
+        self.no_gap_between_versions()?;
+        self.release_dates_in_descending_order()?;
+        self.release_change_sets_in_lexicographical_order()?;
+        self.reference_definitions_in_descending_order()?;
+        self.no_dangling_reference_definitions()?;
+        self.valid_reference_definition_destinations()?;
         Ok(())
     }
 
-    fn lint_release_versions_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+    fn release_versions_in_descending_order(&self) -> Result<(), ChangelogLintError> {
         let releases = self.releases();
         for (previous, current) in releases.iter().map(|r| r.version()).tuple_windows() {
             // Releases are unique so they can't be the same neither. TODO: different error type?
@@ -41,7 +43,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    fn lint_no_gap_between_versions(&self) -> Result<(), ChangelogLintError> {
+    fn no_gap_between_versions(&self) -> Result<(), ChangelogLintError> {
         let releases = self.releases();
         for (previous, current) in releases.iter().map(|r| r.version()).tuple_windows() {
             if !versions_differ_by_one(current, previous) {
@@ -54,7 +56,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    fn lint_release_dates_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+    fn release_dates_in_descending_order(&self) -> Result<(), ChangelogLintError> {
         let releases = self.releases();
         for (previous, current) in releases.iter().map(|r| r.date()).tuple_windows() {
             // The date could be the same, since it's a granularity of one day.
@@ -67,7 +69,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    fn lint_release_change_sets_in_lexicographical_order(&self) -> Result<(), ChangelogLintError> {
+    fn release_change_sets_in_lexicographical_order(&self) -> Result<(), ChangelogLintError> {
         if let Some(unreleased) = self.unreleased() {
             let changes = unreleased.changes();
             for (previous, current) in changes.iter().map(OrderedChangeSet).tuple_windows() {
@@ -95,7 +97,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    fn lint_reference_definitions_in_descending_order(&self) -> Result<(), ChangelogLintError> {
+    fn reference_definitions_in_descending_order(&self) -> Result<(), ChangelogLintError> {
         let reference_definitions = self.reference_definitions();
         for (previous, current) in reference_definitions.iter().tuple_windows() {
             let previous_version = Version::parse(previous.label()).unwrap();
@@ -110,7 +112,7 @@ impl<'source> Changelog<'source> {
         Ok(())
     }
 
-    pub fn lint_no_dangling_reference_definitions(&self) -> Result<(), ChangelogLintError> {
+    pub fn no_dangling_reference_definitions(&self) -> Result<(), ChangelogLintError> {
         // This lint assumes the parsing eliminates all releases with broken links. So all the releases
         // have working reference definitions, but the opposite is not necessarily true.
         let release_versions: HashSet<_> = self
@@ -128,9 +130,29 @@ impl<'source> Changelog<'source> {
         }
         Ok(())
     }
+
+    /// We're going over all the reference definitions, enforcing their destination URLs are both consistent
+    /// and valid for their given version control provider.
+    pub fn valid_reference_definition_destinations(&self) -> Result<(), ChangelogLintError> {
+        // The changelog parsing requires at least one of unreleased or one released version,
+        // guaranteeing, that there is going to be at least one ref def.
+        let first = self.reference_definitions().iter().rev().next().unwrap();
+        let linter = RefDefLinter::try_new(&first).ok_or(
+            ChangelogLintError::UnknownReferenceDefinitionFormat(first.range().clone()),
+        )?;
+        // We only expect the first release, the one at the bottom, to be categorized as a "release"
+        // definition. All other entries should be diffs definition with the previous version.
+        linter.lint_release_definition(&first)?;
+
+        // Now we restart the iteration and we go in pairs.
+        for (previous, current) in self.reference_definitions().iter().rev().tuple_windows() {
+            linter.lint_diff_definition(previous, current)?;
+        }
+
+        Ok(())
+    }
 }
 
-#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangelogLintError {
     // TODO: store ranges instead?!?!?
@@ -140,6 +162,14 @@ pub enum ChangelogLintError {
     UnorderedChangeSets(Range<usize>, Range<usize>),
     UnorderedReferenceDefinitions(Range<usize>, Range<usize>),
     DanglingReferenceDefinition(Range<usize>),
+    UnknownReferenceDefinitionFormat(Range<usize>),
+    InvalidRerenceDefinition(RefDefLintError),
+}
+
+impl From<RefDefLintError> for ChangelogLintError {
+    fn from(value: RefDefLintError) -> Self {
+        Self::InvalidRerenceDefinition(value)
+    }
 }
 
 impl Display for ChangelogLintError {
@@ -175,6 +205,10 @@ impl Display for ChangelogLintError {
             ChangelogLintError::DanglingReferenceDefinition(range) => {
                 write!(f, "found dangling reference definition {:?}", range)
             }
+            ChangelogLintError::UnknownReferenceDefinitionFormat(range) => {
+                write!(f, "unknown reference definition format found {:?}", range)
+            }
+            ChangelogLintError::InvalidRerenceDefinition(err) => write!(f, "{}", err),
         }
     }
 }
@@ -402,6 +436,37 @@ This is a mfking changelog y'all.
             assert_eq!(
                 result,
                 Err(ChangelogLintError::DanglingReferenceDefinition(212..274))
+            );
+        }
+
+        #[test]
+        fn should_error_with_invalid_reference_definition_destination() {
+            let changelog = Changelog::parse(
+                r"# Changelog
+
+This is a mfking changelog y'all.
+
+## [0.2.0] - 2026-02-04
+
+### Removed
+
+- The bull.
+
+## [0.1.0] - 2026-01-01
+
+### Added
+
+- Some bull.
+
+[0.2.0]: https://gitlab.com/owner/repo/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/owner/repo/releases/tag/v0.1.0",
+            )
+            .unwrap();
+            let result = changelog.lint();
+            assert!(
+                matches!(result, Err(ChangelogLintError::InvalidRerenceDefinition(_))),
+                "{:?}",
+                result
             );
         }
 
