@@ -113,6 +113,7 @@ impl ReleaseHeading {
         ))
     }
 
+    // TODO: test with prerelease and build info, and enforce they fail.
     fn parse_version<'source>(node: &Node<'source>) -> Result<Version, ReleaseHeadingParseError> {
         // Example valid node:
         // Link(

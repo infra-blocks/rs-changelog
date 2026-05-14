@@ -4,15 +4,19 @@ use chrono::NaiveDate;
 use itertools::Itertools;
 use semver::Version;
 
-use crate::{Changelog, lint::ordered_change_set::OrderedChangeSet};
+use crate::{
+    Changelog,
+    lint::{ordered_change_set::OrderedChangeSet, version_gap::versions_differ_by_one},
+};
 
 mod ordered_change_set;
+mod version_gap;
 
 impl<'source> Changelog<'source> {
     pub fn lint(&self) -> Result<(), ChangelogLintError> {
         // Check ordering of releases. Could be done during parsing?
         self.lint_release_versions_in_descending_order()?;
-        // self.lint_no_gap_between_versions()?;
+        self.lint_no_gap_between_versions()?;
         self.lint_release_dates_in_descending_order()?;
         self.lint_release_change_sets_in_lexicographical_order()?;
         self.lint_reference_definitions_in_descending_order()?;
@@ -29,6 +33,19 @@ impl<'source> Changelog<'source> {
             // Releases are unique so they can't be the same neither. TODO: different error type?
             if previous <= current {
                 return Err(ChangelogLintError::UnorderedReleaseVersions(
+                    previous.clone(),
+                    current.clone(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn lint_no_gap_between_versions(&self) -> Result<(), ChangelogLintError> {
+        let releases = self.releases();
+        for (previous, current) in releases.iter().map(|r| r.version()).tuple_windows() {
+            if !versions_differ_by_one(current, previous) {
+                return Err(ChangelogLintError::GapBetweenVersions(
                     previous.clone(),
                     current.clone(),
                 ));
@@ -99,6 +116,7 @@ impl<'source> Changelog<'source> {
 pub enum ChangelogLintError {
     // TODO: store ranges instead?!?!?
     UnorderedReleaseVersions(Version, Version),
+    GapBetweenVersions(Version, Version),
     UnorderedReleaseDates(NaiveDate, NaiveDate),
     UnorderedChangeSets(Range<usize>, Range<usize>),
     UnorderedReferenceDefinitions(Range<usize>, Range<usize>),
@@ -110,6 +128,11 @@ impl Display for ChangelogLintError {
             ChangelogLintError::UnorderedReleaseVersions(first, second) => write!(
                 f,
                 "expected release version {} to come after {} to respect descending order",
+                first, second
+            ),
+            ChangelogLintError::GapBetweenVersions(first, second) => write!(
+                f,
+                "expected release version {} to differ with previous version {} by only one",
                 first, second
             ),
             ChangelogLintError::UnorderedReleaseDates(first, second) => write!(
@@ -171,6 +194,39 @@ This is a mfking changelog y'all.
                 Err(ChangelogLintError::UnorderedReleaseVersions(
                     Version::parse("0.1.0").unwrap(),
                     Version::parse("0.2.0").unwrap()
+                ))
+            );
+        }
+
+        #[test]
+        fn should_error_with_version_gap() {
+            let changelog = Changelog::parse(
+                r"# Changelog
+
+This is a mfking changelog y'all.
+
+## [0.2.1] - 2026-02-04
+
+### Removed
+
+- The bull.
+
+## [0.1.0] - 2026-01-01
+
+### Added
+
+- Some bull.
+
+[0.2.1]: https://github.com/owner/repo/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/owner/repo/releases/tag/v0.1.0",
+            )
+            .unwrap();
+            let result = changelog.lint();
+            assert_eq!(
+                result,
+                Err(ChangelogLintError::GapBetweenVersions(
+                    Version::new(0, 2, 1),
+                    Version::new(0, 1, 0)
                 ))
             );
         }
