@@ -2,7 +2,7 @@ mod ast;
 
 use std::{borrow::Cow, path::Path};
 
-use changelog::{debug, parse};
+use changelog::{check, debug};
 use changelog_ast::Node;
 use clap::{Command, arg};
 use miette::{IntoDiagnostic, Result};
@@ -25,8 +25,8 @@ fn main() -> Result<()> {
                 .arg(arg!(<file> "The markdown file to parse.")),
         )
         .subcommand(
-            Command::new("lint")
-                .about("This command lints the provided changelog.")
+            Command::new("check")
+                .about("This command checks the provided changelog.")
                 .arg(arg!(<file> "The mardkwon file to lint.")),
         )
         .after_help("This program is a work in progress.");
@@ -46,10 +46,10 @@ fn main() -> Result<()> {
             let content = read_file(file)?;
             debug(&content);
         }
-        Some(("lint", args)) => {
+        Some(("check", args)) => {
             let file = args.get_one::<String>("file").unwrap();
             let content = read_file(file)?;
-            parse(&content).into_diagnostic()?;
+            check(&content).into_diagnostic()?;
         }
         Some((unknown, _)) => panic!("unknown subcommand: {}", unknown),
         None => panic!("unexpected lack of subcommand"),
