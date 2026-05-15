@@ -1,6 +1,9 @@
-use crate::parse::{
-    ast::Ast,
-    releases::{Changes, ChangesParseError},
+use crate::{
+    ChangeSet,
+    parse::{
+        ast::Ast,
+        releases::{Changes, ChangesParseError},
+    },
 };
 pub use heading::*;
 
@@ -17,8 +20,8 @@ pub struct Unreleased {
 }
 
 impl Unreleased {
-    pub fn changes(&self) -> &Changes {
-        &self.changes
+    pub fn change_sets(&self) -> impl Iterator<Item = &ChangeSet> {
+        self.changes.iter()
     }
 
     pub(crate) fn new(heading: UnreleasedHeading, changes: Changes) -> Self {

@@ -5,6 +5,7 @@ use crate::parse::{
     releases::change_set::{ChangeSet, ChangeSetParseError},
 };
 
+// TODO: rename to change_sets?
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Changes {
     change_sets: Vec<ChangeSet>,

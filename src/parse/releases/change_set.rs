@@ -14,11 +14,15 @@ mod change {
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Change {
-        pub(crate) range: Range<usize>,
+        range: Range<usize>,
     }
 
     impl Change {
-        pub fn new(range: Range<usize>) -> Self {
+        pub fn range(&self) -> &Range<usize> {
+            &self.range
+        }
+
+        pub(crate) fn new(range: Range<usize>) -> Self {
             Self { range }
         }
     }
@@ -227,6 +231,17 @@ impl ChangeSet {
         }
     }
 
+    pub fn changes(&self) -> impl Iterator<Item = &Change> {
+        match self {
+            ChangeSet::Added(inner) => inner.typed_changes(),
+            ChangeSet::Changed(inner) => inner.typed_changes(),
+            ChangeSet::Deprecated(inner) => inner.typed_changes(),
+            ChangeSet::Fixed(inner) => inner.typed_changes(),
+            ChangeSet::Removed(inner) => inner.typed_changes(),
+            ChangeSet::Security(inner) => inner.typed_changes(),
+        }
+    }
+
     pub fn is_added(&self) -> bool {
         matches!(self, ChangeSet::Added(_))
     }
@@ -417,15 +432,23 @@ macro_rules! ChangeSetVariant {
                 Self { heading, items }
             }
 
+            pub(crate) fn typed_changes(&self) -> std::slice::Iter<'_, Change> {
+                self.items.iter()
+            }
+
             /// Returns the range covering the whole change set.
             pub fn range(&self) -> Range<usize> {
                 let start = self.heading.start;
                 let end = self
                     .items
                     .last()
-                    .map(|c| c.range.end)
+                    .map(|c| c.range().end)
                     .unwrap_or(self.heading.end);
                 start..end
+            }
+
+            pub fn changes(&self) -> impl Iterator<Item = &Change> {
+                self.items.iter()
             }
         }
 

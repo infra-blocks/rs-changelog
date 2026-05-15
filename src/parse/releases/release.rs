@@ -3,9 +3,12 @@ use std::ops::Range;
 use chrono::NaiveDate;
 use semver::Version;
 
-use crate::parse::{
-    ast::Ast,
-    releases::{Changes, ChangesParseError},
+use crate::{
+    ChangeSet,
+    parse::{
+        ast::Ast,
+        releases::{Changes, ChangesParseError},
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,8 +24,8 @@ pub struct Release {
 }
 
 impl Release {
-    pub fn changes(&self) -> &Changes {
-        &self.changes
+    pub fn change_sets(&self) -> impl Iterator<Item = &ChangeSet> {
+        self.changes.iter()
     }
 
     pub fn version(&self) -> &Version {
@@ -116,7 +119,6 @@ mod heading {
     fn parse_heading_children(
         nodes: &[Node<'_>],
     ) -> Result<(Version, NaiveDate, Yanked), ParseError> {
-        dbg!(nodes);
         // When the version is properly linked, the heading should have 2 children: a link and a text
         // event with the date following.
         // Optionally, the heading can also end with the [YANKED] annotation. In which case, there
