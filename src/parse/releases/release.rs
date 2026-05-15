@@ -8,12 +8,16 @@ use crate::parse::{
     releases::{Changes, ChangesParseError},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Yanked(pub bool);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Release {
     heading: Range<usize>,
     version: Version,
     date: NaiveDate,
     changes: Changes,
+    yanked: Yanked,
 }
 
 impl Release {
@@ -29,19 +33,30 @@ impl Release {
         &self.date
     }
 
-    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ReleaseParseError> {
-        let (heading, version, date) = heading::parse(ast)?;
-        let changes = Changes::parse(ast)?;
-
-        Ok(Release::new(heading, version, date, changes))
+    pub fn is_yanked(&self) -> bool {
+        self.yanked.0
     }
 
-    fn new(heading: Range<usize>, version: Version, date: NaiveDate, changes: Changes) -> Self {
+    pub(crate) fn parse(ast: &mut Ast) -> Result<Self, ReleaseParseError> {
+        let (heading, version, date, yanked) = heading::parse(ast)?;
+        let changes = Changes::parse(ast)?;
+
+        Ok(Release::new(heading, version, date, changes, yanked))
+    }
+
+    fn new(
+        heading: Range<usize>,
+        version: Version,
+        date: NaiveDate,
+        changes: Changes,
+        yanked: Yanked,
+    ) -> Self {
         Self {
             heading,
             version,
             date,
             changes,
+            yanked,
         }
     }
 }
@@ -71,15 +86,16 @@ mod heading {
     use chrono::NaiveDate;
     use semver::Version;
 
+    use super::Yanked;
     use crate::parse::{ast::Ast, node_ext::NodeExt};
 
-    pub fn parse(ast: &mut Ast) -> Result<(Range<usize>, Version, NaiveDate), ParseError> {
+    pub fn parse(ast: &mut Ast) -> Result<(Range<usize>, Version, NaiveDate, Yanked), ParseError> {
         // The first node has to be a heading.
         let Some(first) = ast.front() else {
             return Err(ParseError::Empty);
         };
 
-        let (version, date) = match first {
+        let (version, date, yanked) = match first {
             Node::Heading(Heading {
                 range: _,
                 children,
@@ -93,16 +109,86 @@ mod heading {
             }
         };
         let first = ast.pop_front().unwrap().unwrap_heading();
-        Ok((first.range, version, date))
+        Ok((first.range, version, date, yanked))
     }
 
-    fn parse_heading_children(nodes: &[Node<'_>]) -> Result<(Version, NaiveDate), ParseError> {
+    // Assumes the children len is minimally 2.
+    fn parse_heading_children(
+        nodes: &[Node<'_>],
+    ) -> Result<(Version, NaiveDate, Yanked), ParseError> {
+        dbg!(nodes);
         // When the version is properly linked, the heading should have 2 children: a link and a text
         // event with the date following.
-        if nodes.len() == 2 {
+        // Optionally, the heading can also end with the [YANKED] annotation. In which case, there
+        // will be exactly 5 nodes if correct.
+        // [
+        //     Link(
+        //         Link {
+        //             range: 3..10,
+        //             children: [
+        //                 Text(
+        //                     Text {
+        //                         range: 4..9,
+        //                         text: Borrowed(
+        //                             "0.1.0",
+        //                         ),
+        //                     },
+        //                 ),
+        //             ],
+        //             dest_url: Borrowed(
+        //                 "https://github.com/yo-mama/azz/releases/tag/v0.1.0",
+        //             ),
+        //             id: Borrowed(
+        //                 "0.1.0",
+        //             ),
+        //             link_type: Shortcut,
+        //             title: Borrowed(
+        //                 "",
+        //             ),
+        //         },
+        //     ),
+        //     Text(
+        //         Text {
+        //             range: 10..24,
+        //             text: Borrowed(
+        //                 " - 2024-05-01 ",
+        //             ),
+        //         },
+        //     ),
+        //     Text(
+        //         Text {
+        //             range: 24..25,
+        //             text: Borrowed(
+        //                 "[",
+        //             ),
+        //         },
+        //     ),
+        //     Text(
+        //         Text {
+        //             range: 25..31,
+        //             text: Borrowed(
+        //                 "YANKED",
+        //             ),
+        //         },
+        //     ),
+        //     Text(
+        //         Text {
+        //             range: 31..32,
+        //             text: Borrowed(
+        //                 "]",
+        //             ),
+        //         },
+        //     ),
+        // ]
+        if nodes.len() == 2
+            || (nodes.len() == 5
+                && nodes[2].is_text_equals("[")
+                && nodes[3].is_text_equals("YANKED")
+                && nodes[4].is_text_equals("]"))
+        {
             let version = parse_version(&nodes[0])?;
-            let date = parse_date(&nodes[1])?;
-            return Ok((version, date));
+            let date = parse_date(&nodes[1], nodes.len() == 2)?;
+            return Ok((version, date, Yanked(nodes.len() == 5)));
         }
 
         // If the link is broken, then the child will be split into 4 fragments, one for '[', one for
@@ -204,8 +290,8 @@ mod heading {
         }
     }
 
-    fn parse_date<'source>(node: &Node<'source>) -> Result<NaiveDate, ParseError> {
-        // Example valid node:
+    fn parse_date<'source>(node: &Node<'source>, last: bool) -> Result<NaiveDate, ParseError> {
+        // Example valid node when expected to be the last node:
         // Text(
         //     Text {
         //         range: 10..23,
@@ -214,9 +300,12 @@ mod heading {
         //         ),
         //     },
         // ),
+        // The only difference when we don't expect to be the last node is an
+        // extra trailing " " at the end of the date format.
         match node {
             Node::Text(Text { range, text }) => {
-                let parsed = NaiveDate::parse_from_str(text, " - %Y-%m-%d")
+                let format = if last { " - %Y-%m-%d" } else { " - %Y-%m-%d " };
+                let parsed = NaiveDate::parse_from_str(text, format)
                     .map_err(|_| ParseError::InvalidDate(range.clone()))?;
                 Ok(parsed)
             }
@@ -288,18 +377,10 @@ mod heading {
             }
 
             #[test]
-            fn should_work_with_valid_info() {
-                let mut ast = Ast::from(
-                    "## [0.1.0] - 2024-05-01\n\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0",
-                );
-                let result = parse(&mut ast);
-                assert_eq!(
-                    result,
-                    Ok((
-                        0..24,
-                        Version::new(0, 1, 0),
-                        NaiveDate::from_ymd_opt(2024, 5, 1).unwrap()
-                    ))
+            fn should_error_with_invalid_yanked_marker() {
+                failure!(
+                    "## [0.1.0] - 01-05-2024 [janked]\n\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0",
+                    ParseError::InvalidText(3..32)
                 );
             }
 
@@ -314,7 +395,26 @@ mod heading {
                     Ok((
                         0..24,
                         Version::new(0, 1, 0),
-                        NaiveDate::from_ymd_opt(2024, 5, 1).unwrap()
+                        NaiveDate::from_ymd_opt(2024, 5, 1).unwrap(),
+                        Yanked(false)
+                    ))
+                );
+                assert!(ast.is_empty());
+            }
+
+            #[test]
+            fn should_work_with_valid_yanked_release() {
+                let mut ast = Ast::from(
+                    "## [0.1.0] - 2024-05-01 [YANKED]\n[0.1.0]: https://github.com/yo-mama/azz/releases/tag/v0.1.0",
+                );
+                let result = parse(&mut ast);
+                assert_eq!(
+                    result,
+                    Ok((
+                        0..33,
+                        Version::new(0, 1, 0),
+                        NaiveDate::from_ymd_opt(2024, 5, 1).unwrap(),
+                        Yanked(true)
                     ))
                 );
                 assert!(ast.is_empty());
