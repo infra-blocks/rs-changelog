@@ -9,7 +9,7 @@ pub use parse::*;
 
 use crate::lint::ChangelogLintError;
 
-pub fn parse(source: &str) -> Result<Changelog<'_>, ChangelogCheckError> {
+pub fn check(source: &str) -> Result<Changelog<'_>, ChangelogCheckError> {
     let changelog = Changelog::parse(source)?;
     changelog.lint()?;
     Ok(changelog)
